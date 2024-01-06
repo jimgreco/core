@@ -1,0 +1,85 @@
+<core package="com.core.platform.schema" version="1" prefix="Test">
+    <properties>
+        <property name="heartbeatMessageName" value="heartbeat"/>
+        <property name="sequencerRejectMessageName" value="sequencerReject"/>
+        <property name="sequencerRejectCommandField" value="command"/>
+        <property name="applicationIdField" value="applicationId"/>
+        <property name="applicationDefinitionMessageName" value="applicationDefinition"/>
+        <property name="applicationDefinitionNameField" value="name"/>
+    </properties>
+
+    <enums>
+        <enum name="Side" description="the side of the order">
+            <value name="Buy" value="1" description="buy the instrument" />
+            <value name="Sell" value="2" description="sell the instrument" />
+        </enum>
+    </enums>
+
+    <enum name="Status" description="the status of an entity">
+        <value name="Up" value="1" description="the application is sending orders"/>
+        <value name="Down" value="2" description="the application is no longer sending orders"/>
+        <value name="Lockdown" value="3" description="the application is no longer allowed to send orders"/>
+    </enum>
+
+    <header>
+        <field name="ApplicationId" type="short" primary-key="true"/>
+        <field name="ApplicationSequenceNumber" type="int"/>
+        <field name="SenderId" type="short"/>
+        <field name="Timestamp" type="long" metadata="timestamp"/>
+        <field name="OptionalFieldsIndex" type="short"/>
+        <field name="SchemaVersion" type="byte"/>
+        <field name="MessageType" type="byte"/>
+    </header>
+
+    <messages>
+        <message id="-1" name="Heartbeat"/>
+
+        <message id="-2" name="SequencerReject">
+            <field name="ReferenceMessageType" type="byte"/>
+            <field name="OrderId" type="int"/>
+            <optional id="1" name="Field" type="DirectBuffer"/>
+            <optional id="2" name="Command" type="DirectBuffer"/>
+        </message>
+
+        <message id="-3" name="Currency" entity="cx">
+            <field name="CurrencyId" type="int" primary-key="true"/>
+            <optional id="1" name="Name" type="DirectBuffer" key="true"/>
+        </message>
+
+        <message id="-4" name="Spot" entity="spot" base-entity="instrument">
+            <field name="InstrumentId" type="int" primary-key="true"/>
+            <field name="BaseCurrencyId" type="int" key="true" foreign-key="cx"/>
+            <field name="QuoteCurrencyId" type="int" key="true" foreign-key="cx"/>
+        </message>
+
+        <message id="-5" name="ApplicationDefinition" entity="application">
+            <optional id="1" name="Name" type="DirectBuffer" key="true" description="the name of the application"/>
+        </message>
+
+        <message id="-6" name="Future" entity="future" base-entity="instrument">
+            <field name="InstrumentId" type="int" primary-key="true"/>
+            <field name="BaseCurrencyId" type="int" key="true" foreign-key="cx"/>
+            <field name="QuoteCurrencyId" type="int" key="true" foreign-key="cx"/>
+            <field name="ExpirationDate" type="int" key="true" metadata="datestamp"/>
+            <field name="Multiplier" type="double"/>
+            <optional name="VenueId" type="int" foreign-key="venue"/>
+        </message>
+
+        <message id="-7" name="VenueInstrument" entity="venueInstrument">
+            <field name="InstrumentId" type="int" key="true" foreign-key="instrument"/>
+            <field name="VenueId" type="int" key="true" foreign-key="venue"/>
+            <field name="MinQty" type="long"/>
+        </message>
+
+        <message id="-8" name="Venue" entity="venue">
+            <field name="VenueId" type="int" primary-key="true"/>
+            <optional id="1" name="Name" type="DirectBuffer" key="true"/>
+        </message>
+
+        <message id="-9" name="ApplicationDiscovery" description="discovery information for locating application path">
+            <optional id="1" name="VmName" type="DirectBuffer" description="the server the application is hosted on"/>
+            <optional id="2" name="CommandPath" type="DirectBuffer" description="the command path of the application"/>
+            <optional id="3" name="ActivationStatus" type="Status" description="whether the status is active or not"/>
+        </message>
+    </messages>
+</core>

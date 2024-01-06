@@ -1,0 +1,17 @@
+package ${schema.package};
+
+/**
+ * ${schema.name} schema.
+ */
+public final class $schema.name {
+
+#foreach ( $field in $schema.fields )
+    /**
+     * ${field.name}[${field.number}] (${field.type}).
+     */
+    public static final int $field.nameCap = ${field.number};
+#end
+
+    private ${schema.name}() {
+    }
+}

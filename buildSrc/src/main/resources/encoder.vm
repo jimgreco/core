@@ -1,0 +1,481 @@
+package ${schema.package};
+
+import com.core.infrastructure.messages.Decoder;
+import com.core.infrastructure.messages.Encoder;
+import com.core.infrastructure.messages.Field;
+import com.core.infrastructure.messages.MessagePublisher;
+import org.agrona.DirectBuffer;
+import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
+
+import java.nio.ByteBuffer;
+
+/**
+#if ( $message.description )
+ * An encoder for ${message.description}.
+#else
+ * An encoder for the {@code ${message.nameCap}} message.
+#end
+*/
+public class ${message.nameCap}Encoder implements Encoder#if ( !$message.encoderInterface.isBlank() ), ${message.encoderInterface}#end {
+
+    /**
+     * The message type value.
+     */
+    public static final byte MESSAGE_TYPE = ${message.id};
+    /**
+    * The number of bytes in the fixed field section of the message.
+    */
+    public static final int FIXED_FIELD_LENGTH = ${message.size};
+    /**
+     * The name of the message.
+     */
+    public static final String MESSAGE_NAME = "${message.name}";
+    /**
+     * The entity name.
+     */
+#if ( $message.entity )
+    public static final String ENTITY_NAME = "${message.entity}";
+#else
+    public static final String ENTITY_NAME = null;
+#end
+    /**
+     * The base entity name.
+     */
+#if ( $message.baseEntity )
+    public static final String BASE_ENTITY_NAME = "${message.baseEntity}";
+#elseif ( $message.entity )
+    public static final String BASE_ENTITY_NAME = "${message.entity}";
+#else
+    public static final String BASE_ENTITY_NAME = null;
+#end
+    /**
+     * The version of the schema that generated this encoder.
+     */
+    public static final byte SCHEMA_VERSION = ${schema.version};
+    /**
+     * The message fields.
+     */
+    public static final Field[] FIELDS = new Field[] {
+#foreach ( $field in $message.fields )
+            new Field("${field.name}", ${field.type}.class, ${field.required}, ${field.header}, ${field.metadata}, ${field.impliedDecimals}, ${field.primaryKey}, ${field.key}, ${field.foreignKey}),
+#end
+    };
+
+    private final MessagePublisher messagePublisher;
+
+    private MutableDirectBuffer buffer;
+    private int offset;
+    @SuppressWarnings("PMD.UnusedPrivateField")
+    private int limit;
+    private int length;
+
+#foreach ( $field in $message.optionalFields )
+#if ( $field.type == 'DirectBuffer' )
+    private final MutableDirectBuffer $field.name = new UnsafeBuffer();
+#end
+#end
+
+    /**
+     * Creates a {@code ${message.nameCap}Encoder} with a buffer of size 1450 bytes, the maximum message size in a
+     * MoldUDP64 packet.
+     */
+    public ${message.nameCap}Encoder() {
+        this(null);
+    }
+
+    /**
+     * Creates a {@code ${message.nameCap}Encoder} with the specified message publisher to be invoked on
+     * {@code commit()} and with a buffer of size 1450 bytes, the maximum message size in a MoldUDP64 packet.
+     *
+     * @param messagePublisher the message publisher to be invoked on {@code commit()}
+     */
+    public ${message.nameCap}Encoder(MessagePublisher messagePublisher) {
+        this.messagePublisher = messagePublisher;
+        wrap(new UnsafeBuffer(ByteBuffer.allocate(1450)));
+    }
+
+    @Override
+    public MessagePublisher commit() {
+        if (messagePublisher != null) {
+            messagePublisher.commit(length);
+        }
+        return messagePublisher;
+    }
+
+    @Override
+    public ${message.nameCap}Encoder wrap(MutableDirectBuffer buffer) {
+        return wrap(buffer, 0, buffer.capacity());
+    }
+
+    @Override
+    public ${message.nameCap}Encoder wrap(MutableDirectBuffer buffer, int offset, int len) {
+        this.buffer = buffer;
+        this.offset = offset;
+        limit = offset + len;
+        length = FIXED_FIELD_LENGTH;
+        setOptionalFieldsIndex((short) length);
+        setSchemaVersion(SCHEMA_VERSION);
+        setMessageType(MESSAGE_TYPE);
+        return this;
+    }
+
+    @Override
+    public ${message.nameCap}Encoder copy(Decoder decoder, MutableDirectBuffer dest) {
+        return copy(decoder, dest, 0, dest.capacity());
+    }
+
+    @Override
+    public ${message.nameCap}Encoder copy(Decoder decoder, MutableDirectBuffer dest, int offset, int len) {
+        this.buffer = dest;
+        this.offset = offset;
+        limit = offset + len;
+        length = decoder.length();
+        dest.putBytes(offset, decoder.buffer(), decoder.offset(), length);
+        return this;
+    }
+#foreach ( $field in $message.requiredFields )
+
+    /**
+#if ( $field.Description )
+     * Sets ${field.description}.
+     *
+     * @param value ${field.description}
+#else
+     * Sets the {@code ${field.name}} field.
+     *
+     * @param value the value
+#end
+     * @return this
+     */
+#if ( $field.header )
+    @Override
+#end
+    public ${message.nameCap}Encoder set${field.nameCap}($field.type value) {
+#if ( $field.primitive )
+        buffer.put${field.typeCap}(offset + ${field.offset}, value);
+#else
+        buffer.putByte(offset + ${field.offset}, value.getValue());
+#end
+        return this;
+    }
+#if ( !$field.primitive )
+
+    /**
+#if ( $field.Description )
+     * Sets ${field.description}.
+     *
+     * @param value ${field.description}
+#else
+     * Sets the {@code ${field.name}} field.
+     *
+     * @param value the value
+#end
+     * @return this
+     */
+    public ${message.nameCap}Encoder set${field.nameCap}(byte value) {
+        buffer.putByte(offset + ${field.offset}, value);
+        return this;
+    }
+#end
+#end
+#foreach ( $field in $message.optionalFields )
+
+#if ( $field.type == 'DirectBuffer' )
+    /**
+#if ( $field.Description )
+     * Returns a buffer to write ${field.description}.
+#else
+     * Returns a buffer to write the {@code ${field.name}} field.
+#end
+     *
+     * @return the buffer
+     */
+    public MutableDirectBuffer acquire${field.nameCap}() {
+        ${field.name}.wrap(buffer, offset + length + 4, limit - offset - length - 4);
+        return ${field.name};
+    }
+
+    /**
+#if ( $field.Description )
+     * Commits the buffer written for ${field.description} to the message.
+#else
+     * Commits the buffer written for the {@code ${field.name}} field to the message.
+#end
+     *
+     * @param len the length of the buffer to commit
+     * @return this
+     */
+    public ${message.nameCap}Encoder commit${field.nameCap}(int len) {
+        buffer.putByte(offset + length, (byte) ${field.id});
+        buffer.putByte(offset + length + 1, (byte) -1);
+        buffer.putShort(offset + length + 2, (short) len);
+        length += 4 + len;
+        return this;
+    }
+
+    /**
+#if ( $field.Description )
+     * Sets ${field.description}.
+     *
+     * @param value ${field.description}
+#else
+     * Sets the {@code ${field.name}} field.
+     *
+     * @param value the value
+#end
+     * @return this
+     */
+    public ${message.nameCap}Encoder set${field.nameCap}(String value) {
+        buffer.putByte(offset + length++, (byte) ${field.id});
+        if (value.length() > 127) {
+            buffer.putByte(offset + length++, (byte) -1);
+            buffer.putShort(offset + length, (short) value.length());
+            length += 2;
+        } else {
+            buffer.putByte(offset + length++, (byte) value.length());
+        }
+        buffer.putStringWithoutLengthAscii(offset + length, value);
+        length += value.length();
+        return this;
+    }
+
+    /**
+#if ( $field.Description )
+     * Sets ${field.description}.
+     *
+     * @param value ${field.description}
+#else
+     * Sets the {@code ${field.name}} field.
+     *
+     * @param value the value
+#end
+     * @param offset the first byte of the value
+     * @param len the length of the value
+     * @return this
+     */
+    public ${message.nameCap}Encoder set${field.nameCap}(DirectBuffer value, int offset, int len) {
+        buffer.putByte(offset + length++, (byte) ${field.id});
+        if (len > 127) {
+            buffer.putByte(offset + length++, (byte) -1);
+            buffer.putShort(offset + length, (short) len);
+            length += 2;
+        } else {
+            buffer.putByte(offset + length++, (byte) len);
+        }
+        buffer.putBytes(offset + length, value, offset, len);
+        length += len;
+        return this;
+    }
+
+#end
+    /**
+#if ( $field.Description )
+     * Sets ${field.description}.
+#else
+     * Sets the {@code ${field.name}} field.
+#end
+     *
+     * @param value the value
+     * @return this
+     */
+    public ${message.nameCap}Encoder set${field.nameCap}($field.type value) {
+        buffer.putByte(offset + length++, (byte) ${field.id});
+#if ( $field.type == 'DirectBuffer' )
+        if (value.capacity() > 127) {
+            buffer.putByte(offset + length++, (byte) -1);
+            buffer.putShort(offset + length, (short) value.capacity());
+            length += 2;
+        } else {
+            buffer.putByte(offset + length++, (byte) value.capacity());
+        }
+#else
+        buffer.putByte(offset + length++, (byte) ${field.size});
+#end
+#if ( $field.primitive )
+        buffer.put${field.typeCap}(offset + length, value);
+        length += ${field.size};
+#elseif ( $field.type == 'DirectBuffer' )
+        buffer.putBytes(offset + length, value, 0, value.capacity());
+        length += value.capacity();
+#else
+        buffer.putByte(offset + length++, value.getValue());
+#end
+        return this;
+    }
+
+#if ( !$field.primitive && $field.type != 'DirectBuffer' )
+
+    /**
+#if ( $field.Description )
+     * Sets ${field.description}.
+     *
+     * @param value ${field.description}
+#else
+     * Sets the {@code ${field.name}} field.
+     *
+     * @param value the value
+#end
+     * @return this
+     */
+    public ${message.nameCap}Encoder set${field.nameCap}(byte value) {
+        buffer.putByte(offset + length++, (byte) ${field.id});
+        buffer.putByte(offset + length++, (byte) ${field.size});
+        buffer.putByte(offset + length++, value);
+        return this;
+    }
+#end
+#end
+
+    @Override
+    public DirectBuffer buffer() {
+        return buffer;
+    }
+
+    @Override
+    public int offset() {
+        return offset;
+    }
+
+    @Override
+    public int length() {
+        return length;
+    }
+
+    @Override
+    public String messageName() {
+        return MESSAGE_NAME;
+    }
+
+    @Override
+    public String entityName() {
+        return ENTITY_NAME;
+    }
+
+    @Override
+    public String baseEntityName() {
+        return BASE_ENTITY_NAME;
+    }
+
+    @Override
+    public byte messageType() {
+        return MESSAGE_TYPE;
+    }
+
+    @Override
+    public Field[] fields() {
+        return FIELDS;
+    }
+
+    @Override
+    public int version() {
+        return SCHEMA_VERSION;
+    }
+
+    @Override
+    public ${message.nameCap}Encoder set(String name, Object value) {
+        switch (name) {
+#foreach ( $field in $message.fields )
+            case "$field.name":
+                set${field.nameCap}(($field.type) value);
+                break;
+#end
+            default:
+                throw new IllegalArgumentException("invalid field name: " + name);
+        }
+        return this;
+    }
+
+    @Override
+    public ${message.nameCap}Encoder set(String name, byte value) {
+        switch (name) {
+#foreach ( $field in $message.fields )
+#if ( $field.type == 'byte' )
+            case "$field.name":
+                set${field.nameCap}(($field.type) value);
+                break;
+#end
+#if ( !$field.primitive and $field.type != 'DirectBuffer' )
+            case "$field.name":
+                set${field.nameCap}(${field.type}.valueOf(value));
+                break;
+#end
+#end
+            default:
+                throw new IllegalArgumentException("invalid field name: " + name);
+        }
+        return this;
+    }
+
+    @Override
+    public ${message.nameCap}Encoder set(String name, short value) {
+        switch (name) {
+#foreach ( $field in $message.fields )
+#if ( $field.type == 'short' )
+            case "$field.name":
+                set${field.nameCap}(value);
+                break;
+#end
+#end
+            default:
+                throw new IllegalArgumentException("invalid field name: " + name);
+        }
+        return this;
+    }
+
+    @Override
+    public ${message.nameCap}Encoder set(String name, int value) {
+        switch (name) {
+#foreach ( $field in $message.fields )
+#if ( $field.type == 'int' )
+            case "$field.name":
+                set${field.nameCap}(value);
+                break;
+#end
+#end
+            default:
+                throw new IllegalArgumentException("invalid field name: " + name);
+        }
+        return this;
+    }
+
+    @Override
+    public ${message.nameCap}Encoder set(String name, long value) {
+        switch (name) {
+#foreach ( $field in $message.fields )
+#if ( $field.type == 'long' )
+            case "$field.name":
+                set${field.nameCap}(value);
+                break;
+#end
+#end
+            default:
+                throw new IllegalArgumentException("invalid field name: " + name);
+        }
+        return this;
+    }
+
+    @Override
+    public Field field(String name) {
+        for (var field : FIELDS) {
+            if (field.getName().equals(name)) {
+                return field;
+            }
+        }
+        throw new IllegalArgumentException("unknown field name: " + name);
+    }
+
+    @Override
+    public ${message.nameCap}Decoder toDecoder() {
+        var decoder = new ${message.nameCap}Decoder();
+        var wrapper = new UnsafeBuffer();
+        wrapper.wrap(buffer, offset, length);
+        decoder.wrap(wrapper);
+        return decoder;
+    }
+
+    @Override
+    public String toString() {
+        return toDecoder().toString();
+    }
+}

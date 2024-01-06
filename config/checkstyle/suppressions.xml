@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+        "-//Puppy Crawl//DTD Suppressions 1.0//EN"
+        "http://www.puppycrawl.com/dtds/suppressions_1_0.dtd">
+
+<suppressions>
+    <suppress checks="Javadoc" files="Test"/>
+    <suppress checks="CustomImportOrder" files=".*"/>
+    <suppress checks="RequireEmptyLineBeforeBlockTagGroup" files=".*"/>
+    <suppress checks="EmptyCatchBlock" files=".*"/>
+    <suppress checks="AbbreviationAsWordInName" files="Test"/>
+    <suppress checks="MethodName" files="Test"/>
+    <suppress checks="LineLength" files="generated"/>
+    <suppress checks="[a-zA-Z0-9]*" files="generated-main-avro-java"/>
+</suppressions>

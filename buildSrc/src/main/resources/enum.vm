@@ -1,0 +1,52 @@
+package ${schema.package};
+
+#if ( $enum.description )
+/**
+ * Enumeration set values for ${enum.description}.
+ */
+#end
+public enum $enum.name {
+
+#foreach ( $value in $enum.values )
+#if ( $value.description )
+    /**
+     * ${value.description}.
+     */
+#end
+    ${value.name}((byte) ${value.value}),
+#end
+    ;
+
+    private final byte value;
+
+    ${enum.name}(byte value) {
+        this.value = value;
+    }
+
+    /**
+     * Returns the encoded value of the enum.
+     *
+     * @return the encoded value of the enum
+     */
+    public byte getValue() {
+        return value;
+    }
+
+    /**
+     * Returns the enum constant associated with the specified value, or null if the value is not associated with an
+     * enum constant.
+     *
+     * @param value the value associated with the constant to return
+     * @return the enum constant associated with the specified value
+     */
+    public static $enum.name valueOf(byte value) {
+        switch (value) {
+#foreach ( $value in $enum.values )
+            case ${value.value}:
+                return ${value.name};
+#end
+            default:
+                return null;
+        }
+    }
+}

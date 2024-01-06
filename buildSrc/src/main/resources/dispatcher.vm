@@ -1,0 +1,146 @@
+package ${schema.package};
+
+import java.util.Arrays;
+import java.util.function.Consumer;
+
+import com.core.infrastructure.messages.Decoder;
+import org.agrona.DirectBuffer;
+
+/**
+ * A dispatcher of messages for the {@code ${schema.prefix}Schema}.
+ */
+@SuppressWarnings("unchecked")
+public class ${schema.prefix}Dispatcher implements com.core.infrastructure.messages.Dispatcher {
+
+    private Consumer<Decoder>[] after = new Consumer[0];
+    private Consumer<Decoder>[] before = new Consumer[0];
+#foreach ( $message in $schema.messages )
+    private Consumer<${message.nameCap}Decoder>[] ${message.name}Listeners = new Consumer[0];
+    private final ${message.nameCap}Decoder ${message.name}Decoder = new ${message.nameCap}Decoder();
+#end
+    private long timestamp;
+
+    /**
+     * Creates an empty {@code ${schema.prefix}Dispatcher}.
+     */
+    public ${schema.prefix}Dispatcher() {
+    }
+
+    @Override
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    @Override
+    public Decoder getDecoder(DirectBuffer buffer, int offset, int length) {
+        var messageType = buffer.getByte(offset + ${schema.headerOffset("messageType")});
+
+        switch (messageType) {
+#foreach ( $message in $schema.messages )
+            case ${message.id}:
+                return ${message.name}Decoder.wrap(buffer, offset, length);
+#end
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Dispatches the message to listeners of the message type associated with the specified {@code decoder}.
+     *
+     * @param decoder the decoder
+     */
+    public void dispatch(Decoder decoder) {
+        timestamp = decoder.getTimestamp();
+
+        switch (decoder.getMessageType()) {
+#foreach ( $message in $schema.messages )
+            case ${message.id}:
+                var ${message.name} = (${message.nameCap}Decoder) decoder;
+                for (var listener : before) {
+                    listener.accept(${message.name});
+                }
+                for (var listener : ${message.name}Listeners) {
+                    listener.accept(${message.name});
+                }
+                for (var listener : after) {
+                    listener.accept(${message.name});
+                }
+                break;
+#end
+            default:
+                break;
+        }
+    }
+
+    @Override
+    public void dispatch(DirectBuffer buffer, int offset, int length) {
+        timestamp = buffer.getLong(offset + ${schema.headerOffset("timestamp")});
+        var messageType = buffer.getByte(offset + ${schema.headerOffset("messageType")});
+
+        switch (messageType) {
+#foreach ( $message in $schema.messages )
+            case ${message.id}:
+                var ${message.name} = ${message.name}Decoder.wrap(buffer, offset, length);
+                for (var listener : before) {
+                    listener.accept(${message.name});
+                }
+                for (var listener : ${message.name}Listeners) {
+                    listener.accept(${message.name});
+                }
+                for (var listener : after) {
+                    listener.accept(${message.name});
+                }
+                break;
+#end
+            default:
+                break;
+        }
+    }
+#foreach ( $message in $schema.messages )
+
+    /**
+#if ( $message.description )
+     * Adds a listener for ${message.description}.
+#else
+     * Adds a listener for {@code ${message.nameCap}} messages.
+#end
+     *
+     * @param listener the listener
+     * @return this
+     */
+    public ${schema.prefix}Dispatcher add${message.nameCap}Listener(Consumer<${message.nameCap}Decoder> listener) {
+        ${message.name}Listeners = Arrays.copyOf(${message.name}Listeners, ${message.name}Listeners.length + 1);
+        ${message.name}Listeners[${message.name}Listeners.length - 1] = listener;
+        return this;
+    }
+#end
+
+    @Override
+    public ${schema.prefix}Dispatcher addListenerAfterDispatch(Consumer<Decoder> listener) {
+        after = Arrays.copyOf(after, after.length + 1);
+        after[after.length - 1] = listener;
+        return this;
+    }
+
+    @Override
+    public ${schema.prefix}Dispatcher addListenerBeforeDispatch(Consumer<Decoder> listener) {
+        before = Arrays.copyOf(before, before.length + 1);
+        before[before.length - 1] = listener;
+        return this;
+    }
+
+    @Override
+    public <T extends Decoder> ${schema.prefix}Dispatcher addListener(String messageName, Consumer<T> listener) {
+        switch (messageName) {
+#foreach ( $message in $schema.messages )
+            case "${message.name}":
+                add${message.nameCap}Listener((Consumer<${message.nameCap}Decoder>) listener);
+                break;
+#end
+            default:
+                throw new IllegalArgumentException("invalid message name: " + messageName);
+        }
+        return this;
+    }
+}

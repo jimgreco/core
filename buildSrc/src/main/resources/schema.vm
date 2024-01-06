@@ -1,0 +1,154 @@
+package ${schema.package};
+
+import com.core.infrastructure.messages.Decoder;
+import com.core.infrastructure.messages.Encoder;
+import com.core.infrastructure.messages.MessagePublisher;
+
+/**
+#if ( $schema.description )
+ * The schema for ${schema.description} messages.
+#else
+ * The message schema.
+#end
+*/
+public class ${schema.prefix}Schema implements com.core.infrastructure.messages.Schema<${schema.prefix}Dispatcher, ${schema.prefix}Provider> {
+
+    private static final String[] MESSAGE_NAMES = new String[] {
+#foreach ( $message in $schema.messages )
+            "$message.name",
+#end
+    };
+    private static final String[] PROPERTIES = new String[] {
+#foreach ( $property in $schema.properties.entrySet() )
+            "$property.key",
+#end
+    };
+
+    /**
+     * Creates an empty {@code ${schema.prefix}Schema}.
+     */
+    public ${schema.prefix}Schema() {
+    }
+
+    @Override
+    public String[] getProperties() {
+        return PROPERTIES;
+    }
+
+    @Override
+    public String getProperty(String property) {
+        switch (property) {
+#foreach ( $property in $schema.properties.entrySet() )
+            case "$property.key":
+                return "$property.value";
+#end
+            default:
+                throw new IllegalArgumentException("unknown property: " + property);
+        }
+    }
+
+    @Override
+    public int getVersion() {
+        return ${schema.version};
+    }
+
+    @Override
+    public String[] getMessageNames() {
+        return MESSAGE_NAMES;
+    }
+
+    @Override
+    public int getApplicationIdOffset() {
+        return ${schema.headerOffset("applicationId")};
+    }
+
+    @Override
+    public int getApplicationSequenceNumberOffset() {
+        return ${schema.headerOffset("applicationSequenceNumber")};
+    }
+
+    @Override
+    public int getTimestampOffset() {
+        return ${schema.headerOffset("timestamp")};
+    }
+
+    @Override
+    public int getOptionalFieldsOffset() {
+        return ${schema.headerOffset("optionalFieldsIndex")};
+    }
+
+    @Override
+    public int getSchemaVersionOffset() {
+        return ${schema.headerOffset("schemaVersion")};
+    }
+
+    @Override
+    public int getMessageTypeOffset() {
+        return ${schema.headerOffset("messageType")};
+    }
+
+    @Override
+    public int getMessageHeaderLength() {
+        return ${schema.header.size};
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Encoder> T createEncoder(String messageName) {
+        switch (messageName) {
+#foreach ( $message in $schema.messages )
+            case "${message.name}":
+                return (T) new ${message.nameCap}Encoder();
+#end
+            default:
+                throw new IllegalArgumentException("unknown message name: " + messageName);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Decoder> T createDecoder(String messageName) {
+        switch (messageName) {
+#foreach ( $message in $schema.messages )
+            case "${message.name}":
+                return (T) new ${message.nameCap}Decoder();
+#end
+            default:
+                throw new IllegalArgumentException("unknown message name: " + messageName);
+        }
+    }
+
+    @Override
+    public int getMessageType(String messageName) {
+        switch (messageName) {
+#foreach ( $message in $schema.messages )
+            case "${message.name}":
+                return ${message.id};
+#end
+            default:
+                throw new IllegalArgumentException("unknown message name: " + messageName);
+        }
+    }
+
+    @Override
+    public String getMessageName(byte messageType) {
+        switch (messageType) {
+#foreach ( $message in $schema.messages )
+            case ${message.id}:
+                return "${message.name}";
+#end
+            default:
+                throw new IllegalArgumentException("unknown message type: " + messageType);
+        }
+    }
+
+    @Override
+    public ${schema.prefix}Dispatcher createDispatcher() {
+        return new ${schema.prefix}Dispatcher();
+    }
+
+    @Override
+    public ${schema.prefix}Provider createProvider(MessagePublisher messagePublisher) {
+        return new ${schema.prefix}Provider(messagePublisher);
+    }
+}

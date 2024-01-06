@@ -1,0 +1,87 @@
+package ${schema.package};
+
+import com.core.infrastructure.buffer.BufferUtils;
+import com.core.platform.fix.FixEnum;
+import org.agrona.DirectBuffer;
+#if ( $enum.singleCharacter )
+import org.eclipse.collections.api.map.primitive.MutableByteObjectMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ByteObjectHashMap;
+
+#else
+import com.core.infrastructure.collections.CoreMap;
+
+import java.util.Map;
+#end
+import java.util.function.Function;
+
+/**
+ * ${enum.name}[${enum.number}].
+ * <ul>
+#foreach ( $value in $enum.values )
+ *     <li>${value.name}[${value.value}]
+#end
+ * </ul>
+ */
+@SuppressWarnings("checkstyle:AbbreviationAsWordInName")
+public enum $enum.name implements FixEnum<${enum.name}> {
+
+#foreach ( $value in $enum.values )
+    /**
+     * ${value.name}[${value.value}].
+     */
+    ${value.name}("${value.value}"),
+#end
+    ;
+
+#if ( $enum.singleCharacter )
+    private static final MutableByteObjectMap<${enum.name}> VALUE_MAP = new ByteObjectHashMap<>();
+#else
+    private static final Map<DirectBuffer, ${enum.name}> VALUE_MAP = new CoreMap<>();
+#end
+
+    /**
+     * A public static alias for the {@code valueOf} method to parse {@code DirectBuffer}s into enum values.
+     */
+    public static final Function<DirectBuffer, ${enum.name}> PARSER = ${enum.name}::valueOf;
+
+    static {
+        for (var value : values()) {
+#if ( $enum.singleCharacter )
+            VALUE_MAP.put(value.value.getByte(0), value);
+#else
+            VALUE_MAP.put(value.value, value);
+#end
+        }
+    }
+
+    private final DirectBuffer value;
+
+    ${enum.name}(String value) {
+        this.value = BufferUtils.fromAsciiString(value);
+    }
+
+    /**
+     * Returns the encoded value of the enum.
+     *
+     * @return the encoded value of the enum
+     */
+    @Override
+    public DirectBuffer getValue() {
+        return value;
+    }
+
+    /**
+     * Returns the enum constant associated with the specified value, or null if the value is not associated with an
+     * enum constant.
+     *
+     * @param value the value associated with the constant to return
+     * @return the enum constant associated with the specified value
+     */
+    public static $enum.name valueOf(DirectBuffer value) {
+#if ( $enum.singleCharacter )
+        return value.capacity() == 1 ? VALUE_MAP.get(value.getByte(0)) : null;
+#else
+        return VALUE_MAP.get(value);
+#end
+    }
+}

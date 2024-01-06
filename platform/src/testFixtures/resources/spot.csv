@@ -1,0 +1,4 @@
+baseCurrencyId,quoteCurrencyId
+BTC,USD
+ETH,USD
+ETH,BTC

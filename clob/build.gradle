@@ -1,0 +1,31 @@
+plugins {
+    id 'core.java-conventions'
+}
+
+import com.core.schema.tasks.GenerateSchemaTask
+
+dependencies {
+    api (
+            project(':infrastructure'),
+            project(':platform')
+    )
+
+    testFixturesApi (
+            testFixtures(project(':infrastructure')),
+            testFixtures(project(':platform'))
+    )
+}
+
+tasks.register("generateSchema", GenerateSchemaTask) {
+    schemaXml = "${projectDir}/src/main/resources/clob-schema.xml"
+    outputDir = "${buildDir}/generated/schema"
+}
+sourceSets.main.java.srcDir new File(buildDir, 'generated/schema')
+idea {
+    module {
+        generatedSourceDirs += file('${buildDir}/generated/schema/')
+    }
+}
+
+compileJava.dependsOn('generateSchema')
+

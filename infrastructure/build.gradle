@@ -1,0 +1,11 @@
+plugins {
+    id 'core.java-conventions'
+}
+
+dependencies {
+    api (
+            'org.agrona:agrona:1.10.0',
+            'org.eclipse.collections:eclipse-collections-api:10.4.0',
+            'org.eclipse.collections:eclipse-collections:10.4.0'
+    )
+}

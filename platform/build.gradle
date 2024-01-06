@@ -1,0 +1,40 @@
+plugins {
+    id 'core.java-conventions'
+}
+
+import com.core.schema.tasks.GenerateFixTask
+import com.core.schema.tasks.GenerateSchemaTask
+
+dependencies {
+    api (
+            project(':infrastructure')
+    )
+
+    testFixturesApi (
+            testFixtures(project(':infrastructure'))
+    )
+}
+
+tasks.register("generateSchema", GenerateSchemaTask) {
+    schemaXml = "${projectDir}/src/testFixtures/resources/test-schema.xml"
+    outputDir = "${buildDir}/generated/schema"
+}
+sourceSets.testFixtures.java.srcDir new File(buildDir, 'generated/schema')
+idea {
+    module {
+        generatedSourceDirs += file('${buildDir}/generated/schema/')
+    }
+}
+
+tasks.register("generateFixSchema", GenerateFixTask) {
+    schemaXml = "${projectDir}/src/main/resources/quickfix42.xml"
+    outputDir = "${buildDir}/generated/fix"
+}
+sourceSets.main.java.srcDir new File(buildDir, 'generated/fix')
+idea {
+    module {
+        generatedSourceDirs += file('${buildDir}/generated/fix/')
+    }
+}
+
+compileJava.dependsOn('generateSchema', 'generateFixSchema')

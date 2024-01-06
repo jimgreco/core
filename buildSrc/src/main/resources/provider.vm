@@ -1,0 +1,65 @@
+package ${schema.package};
+
+import com.core.infrastructure.messages.Encoder;
+import com.core.infrastructure.messages.MessagePublisher;
+
+/**
+ * A dispatcher of messages for the {@code ${schema.prefix}Schema}.
+ */
+public class ${schema.prefix}Provider implements com.core.infrastructure.messages.Provider {
+
+    private final MessagePublisher messagePublisher;
+#foreach ( $message in $schema.messages )
+    private final ${message.nameCap}Encoder ${message.name}Encoder;
+#end
+
+    /**
+     * Creates an empty {@code ${schema.prefix}Publisher}, wrapping the specified {@code MessagePublisher}.
+     *
+     * @param messagePublisher the message publisher
+     */
+    public ${schema.prefix}Provider(MessagePublisher messagePublisher) {
+        this.messagePublisher = messagePublisher;
+#foreach ( $message in $schema.messages )
+        ${message.name}Encoder = new ${message.nameCap}Encoder(messagePublisher);
+#end
+    }
+
+#foreach ( $message in $schema.messages )
+
+    /**
+#if ( $message.description )
+     * Returns the encoder for ${message.description}.
+#else
+     * Returns the encoder for {@code ${message.nameCap}} messages.
+#end
+     *
+     * @return the encoder
+     */
+    public ${message.nameCap}Encoder get${message.nameCap}Encoder() {
+        return ${message.name}Encoder.wrap(messagePublisher.acquire());
+    }
+#end
+
+    @Override
+    public Encoder getEncoder(String messageName) {
+        switch (messageName) {
+#foreach ( $message in $schema.messages )
+            case "${message.name}":
+                return get${message.nameCap}Encoder();
+#end
+            default:
+                throw new IllegalArgumentException("invalid message name: " + messageName);
+        }
+    }
+
+    @Override
+    public void send() {
+        messagePublisher.send();
+    }
+
+    @Override
+    public MessagePublisher getMessagePublisher() {
+        return messagePublisher;
+    }
+}
