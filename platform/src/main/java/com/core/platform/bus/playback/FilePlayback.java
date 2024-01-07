@@ -492,7 +492,7 @@ public class FilePlayback<DispatcherT extends Dispatcher, ProviderT extends Prov
         }
 
         @Override
-        public void setEventListener(Consumer<DirectBuffer> eventListener) {
+        public void addEventListener(Consumer<DirectBuffer> eventListener) {
             // do nothing, can only act as a server
         }
 

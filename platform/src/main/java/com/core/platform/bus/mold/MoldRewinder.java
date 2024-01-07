@@ -31,8 +31,9 @@ class MoldRewinder implements Activatable {
     private DirectBuffer discoveryReply;
 
     MoldRewinder(
-            Selector selector, LogFactory logFactory, ActivatorFactory activatorFactory,
+            String name, Selector selector, LogFactory logFactory, ActivatorFactory activatorFactory,
             MoldSession moldSession, MessageStore messageStore, String discoveryChannelAddress) {
+        Objects.requireNonNull(name, "name is null");
         this.selector = Objects.requireNonNull(selector, "selectService is null");
         Objects.requireNonNull(logFactory, "logFactory is null");
         Objects.requireNonNull(activatorFactory, "activationManager is null");
@@ -46,8 +47,7 @@ class MoldRewinder implements Activatable {
         writeBuffer = BufferUtils.allocate(2 * MoldConstants.MTU_SIZE);
         log = logFactory.create(getClass());
 
-        activator = activatorFactory.createActivator(
-                "MoldRewinder:" + discoveryChannelAddress, this, moldSession);
+        activator = activatorFactory.createActivator(name, this, moldSession);
     }
 
     /**

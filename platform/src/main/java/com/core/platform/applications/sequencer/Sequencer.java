@@ -127,16 +127,8 @@ public class Sequencer implements Activatable, Encodable {
 
         activator = activatorFactory.createActivator(applicationName, this, busServer);
 
-        busServer.setEventListener(buffer -> {
-            if (!activator.isActive()) {
-                onEvent(buffer, 0, buffer.capacity());
-            }
-        });
-        busServer.setCommandListener(buffer -> {
-            if (activator.isActive()) {
-                onCommand(buffer, 0, buffer.capacity());
-            }
-        });
+        busServer.addEventListener(buffer -> onEvent(buffer, 0, buffer.capacity()));
+        busServer.setCommandListener(buffer -> onCommand(buffer, 0, buffer.capacity()));
     }
 
     private void onCommand(DirectBuffer buffer, int offset, int length) {
@@ -174,6 +166,10 @@ public class Sequencer implements Activatable, Encodable {
     }
 
     private void onEvent(DirectBuffer buffer, int offset, int length) {
+        if (busServer.isActive()) {
+            return;
+        }
+
         if (length < schema.getMessageHeaderLength()) {
             log.warn().append("event received with less bytes than header length: expected=")
                     .append(schema.getMessageHeaderLength())

@@ -37,12 +37,14 @@ class MoldCommandReceiver implements Activatable, Encodable {
     private Consumer<DirectBuffer> commandListener;
 
     MoldCommandReceiver(
+            String name,
             Selector selector,
             LogFactory logFactory,
             ActivatorFactory activatorFactory,
             MoldSession moldSession,
             String commandChannelAddress,
             boolean multicast) {
+        Objects.requireNonNull(name, "name is null");
         this.selector = Objects.requireNonNull(selector, "selectService is null");
         Objects.requireNonNull(logFactory, "logFactory is null");
         Objects.requireNonNull(activatorFactory, "activationManager is null");
@@ -54,8 +56,7 @@ class MoldCommandReceiver implements Activatable, Encodable {
         packetBufferWrapper = BufferUtils.emptyBuffer();
 
         log = logFactory.create(getClass());
-        activator = activatorFactory.createActivator(
-                "MoldCommandReceiver:" + commandChannelAddress, this, moldSession);
+        activator = activatorFactory.createActivator(name, this, moldSession);
     }
 
     @Override

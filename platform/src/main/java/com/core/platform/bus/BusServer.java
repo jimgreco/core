@@ -155,7 +155,7 @@ public interface BusServer<DispatcherT extends Dispatcher, ProviderT extends Pro
      *
      * @param eventListener the listener for events
      */
-    void setEventListener(Consumer<DirectBuffer> eventListener);
+    void addEventListener(Consumer<DirectBuffer> eventListener);
 
     /**
      * Sets the listener for messages received on the command channel.

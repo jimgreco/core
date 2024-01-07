@@ -67,7 +67,7 @@ public class TestBusServer<DispatcherT extends Dispatcher, ProviderT extends Pro
     }
 
     @Override
-    public void setEventListener(Consumer<DirectBuffer> eventListener) {
+    public void addEventListener(Consumer<DirectBuffer> eventListener) {
         this.eventListener = eventListener;
     }
 

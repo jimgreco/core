@@ -13,10 +13,19 @@ create /bus com.core.platform.bus.mold.MoldBusClient \
 # Primary Sequencer
 create /busServer/store com.core.platform.bus.mold.BufferChannelMessageStore
 create /busServer com.core.platform.bus.mold.MoldBusServer \
-    server @/bus/schema @/busServer/store $event_channel $command_channel $discovery_channel
+    server @/bus @/bus/schema @/busServer/store $event_channel $command_channel $discovery_channel
 
 create seq01a com.core.platform.applications.sequencer.Sequencer @/busServer SEQ01
 create seq01a/handlers com.core.clob.applications.sequencer.ClobCommandHandlers @/busServer
+#
+
+# Backup Sequencer
+create /busServer2/store com.core.platform.bus.mold.BufferChannelMessageStore
+create /busServer2 com.core.platform.bus.mold.MoldBusServer \
+    server2 @/bus @/bus/schema @/busServer/store $event_channel $command_channel $discovery_channel
+
+create seq02a com.core.platform.applications.sequencer.Sequencer @/busServer2 SEQ02
+create seq02a/handlers com.core.clob.applications.sequencer.ClobCommandHandlers @/busServer2
 #
 
 # Reference Data Publisher

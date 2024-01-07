@@ -459,7 +459,7 @@ public class InProcessBus<DispatcherT extends Dispatcher, ProviderT extends Prov
         }
 
         @Override
-        public void setEventListener(Consumer<DirectBuffer> eventListener) {
+        public void addEventListener(Consumer<DirectBuffer> eventListener) {
             // no backup sequencer
         }
 

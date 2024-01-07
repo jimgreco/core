@@ -21,6 +21,7 @@ import org.agrona.MutableDirectBuffer;
 
 import java.io.IOException;
 import java.net.StandardSocketOptions;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -49,13 +50,14 @@ class MoldEventReceiver implements Activatable, Encodable {
     private DatagramChannel eventChannelSocket;
     private DatagramChannel discoveryChannelSocket;
     private DatagramChannel rewindSocket;
-    private Consumer<DirectBuffer> eventListener;
+    private Consumer<DirectBuffer>[] eventListeners;
     private long rewindTaskId;
     private long discoveryTaskId;
     private boolean firstRewind;
     @Property
     private long nextSeqNum;
 
+    @SuppressWarnings("unchecked")
     MoldEventReceiver(
             String busName,
             String name,
@@ -85,6 +87,7 @@ class MoldEventReceiver implements Activatable, Encodable {
         packetBuffer = BufferUtils.allocateDirect(MoldConstants.MTU_SIZE);
         packetBufferWrapper = BufferUtils.emptyBuffer();
         activator = activatorFactory.createActivator(name, this);
+        eventListeners = new Consumer[0];
 
         metricFactory.registerGaugeMetric(
                 "Mold_Session_NextSeqNum",
@@ -99,7 +102,7 @@ class MoldEventReceiver implements Activatable, Encodable {
     @Override
     public void activate() {
         try {
-            if (eventListener == null) {
+            if (eventListeners.length == 0) {
                 throw new IllegalStateException("eventListener not set");
             }
             firstRewind = true;
@@ -162,13 +165,9 @@ class MoldEventReceiver implements Activatable, Encodable {
         }
     }
 
-    /**
-     * Sets the listener for messages that are published in sequence order.
-     *
-     * @param eventListener the listener for messages that are published in sequence order
-     */
-    public void setEventListener(Consumer<DirectBuffer> eventListener) {
-        this.eventListener = Objects.requireNonNull(eventListener);
+    void addEventListener(Consumer<DirectBuffer> eventListener) {
+        this.eventListeners = Arrays.copyOf(eventListeners, eventListeners.length + 1);
+        eventListeners[eventListeners.length - 1] = eventListener;
     }
 
     private void onDiscoveryChannelPacket() {
@@ -270,7 +269,9 @@ class MoldEventReceiver implements Activatable, Encodable {
                 // next event to process
                 nextSeqNum++;
                 packetBufferWrapper.wrap(packetBuffer, offset, eventLength);
-                eventListener.accept(packetBufferWrapper);
+                for (var eventListener : eventListeners) {
+                    eventListener.accept(packetBufferWrapper);
+                }
             } else if (msgSeqNum < nextSeqNum) {
                 // the session is ahead and has already processed this event
                 log.warn().append("dropping already processed event: seqNum=").append(msgSeqNum).commit();

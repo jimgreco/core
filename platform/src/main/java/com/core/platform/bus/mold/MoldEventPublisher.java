@@ -15,6 +15,7 @@ import com.core.platform.activation.ActivatorFactory;
 import org.agrona.MutableDirectBuffer;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -38,12 +39,14 @@ class MoldEventPublisher implements Activatable, Encodable {
     private MutableDirectBuffer eventBuffer;
 
     MoldEventPublisher(
+            String name,
             Selector selector,
             LogFactory logFactory,
             ActivatorFactory activatorFactory,
             MoldSession moldSession,
             MessageStore messageStore,
             String eventChannelAddress) {
+        Objects.requireNonNull(name, "name is null");
         this.selector = Objects.requireNonNull(selector, "selectService is null");
         Objects.requireNonNull(logFactory, "logFactory is null");
         Objects.requireNonNull(activatorFactory, "activationManager is null");
@@ -57,14 +60,21 @@ class MoldEventPublisher implements Activatable, Encodable {
         eventLengths = new int[100];
         log = logFactory.create(getClass());
 
-        activator = activatorFactory.createActivator(
-                "MoldEventPublisher:" + eventChannelAddress, this, moldSession);
+        moldSession.addOpenSessionListener(() -> {
+            try {
+                messageStore.open(moldSession.getSessionName());
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
+
+        activator = activatorFactory.createActivator(name, this, moldSession);
     }
 
     @Override
     public void activate() {
         try {
-            log.info().append("opening event connector: session=").append(moldSession.getSessionName())
+            log.info().append("opening event publisher: session=").append(moldSession.getSessionName())
                     .append(", eventChannel=").append(eventChannelAddress)
                     .commit();
 
@@ -72,7 +82,6 @@ class MoldEventPublisher implements Activatable, Encodable {
 
             var sessionName = moldSession.getSessionName();
             packetHeader.putBytes(MoldConstants.SESSION_OFFSET, sessionName, 0, sessionName.capacity());
-            messageStore.open(sessionName);
 
             eventChannel = selector.createDatagramChannel();
             eventChannel.configureBlocking(false);
@@ -83,7 +92,7 @@ class MoldEventPublisher implements Activatable, Encodable {
 
             activator.ready();
         } catch (IOException e) {
-            throw new IllegalStateException(e);
+            throw new UncheckedIOException(e);
         }
     }
 
@@ -151,7 +160,7 @@ class MoldEventPublisher implements Activatable, Encodable {
             eventsInPacket = 0;
 
             // send to the event channel
-            if (eventChannel.isOpen()) {
+            if (eventChannel != null && eventChannel.isOpen()) {
                 packetHeaderAndEvents[0] = BufferUtils.byteBuffer(packetHeader, 0, packetHeader.capacity());
                 packetHeaderAndEvents[1] = BufferUtils.byteBuffer(eventBuffer, 0, position);
                 var bytesWritten = eventChannel.write(packetHeaderAndEvents, 0, 2);

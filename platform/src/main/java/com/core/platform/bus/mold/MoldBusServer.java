@@ -21,7 +21,6 @@ import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 
 import java.util.Objects;
-import java.util.Random;
 import java.util.function.Consumer;
 
 /**
@@ -100,9 +99,10 @@ public class MoldBusServer<DispatcherT extends Dispatcher, ProviderT extends Pro
         timestampOffset = getSchema().getTimestampOffset();
 
         session = new MoldSession(
-                "MoldServerSession:" + eventChannelAddress, time, activatorFactory);
+                busName + ":MoldServerSession:" + eventChannelAddress, time, activatorFactory);
 
         eventPublisher = new MoldEventPublisher(
+                busName + ":MoldEventPublisher:" + eventChannelAddress,
                 selector,
                 logFactory,
                 activatorFactory,
@@ -112,7 +112,7 @@ public class MoldBusServer<DispatcherT extends Dispatcher, ProviderT extends Pro
 
         eventReceiver = new MoldBusServerEventReceiver(
                 busName,
-                "MoldServerEventReceiver:" + eventChannelAddress,
+                busName + ":MoldServerEventReceiver:" + eventChannelAddress,
                 selector,
                 scheduler,
                 logFactory,
@@ -123,6 +123,7 @@ public class MoldBusServer<DispatcherT extends Dispatcher, ProviderT extends Pro
                 discoveryChannelAddress);
 
         commandReceiver = new MoldCommandReceiver(
+                busName + ":MoldCommandReceiver:" + commandChannelAddress,
                 selector,
                 logFactory,
                 activatorFactory,
@@ -131,6 +132,7 @@ public class MoldBusServer<DispatcherT extends Dispatcher, ProviderT extends Pro
                 true);
 
         var rewinder = new MoldRewinder(
+                busName + ":MoldRewinder:" + discoveryChannelAddress,
                 selector,
                 logFactory,
                 activatorFactory,
@@ -139,7 +141,96 @@ public class MoldBusServer<DispatcherT extends Dispatcher, ProviderT extends Pro
                 discoveryChannelAddress);
 
         activator = activatorFactory.createActivator(
-                "MoldBusServer:" + eventChannelAddress,
+                busName + ":MoldBusServer:" + eventChannelAddress,
+                this,
+                session, commandReceiver, rewinder, eventPublisher);
+        activator.ready();
+    }
+
+    /**
+     * Creates a {@code MoldBusServer} and the components required to operate a MoldUDP64 bus from the specified
+     * parameters, including a from a {@code MoldBusClient} which shares the event stream.
+     *
+     * @param selector a selector for asynchronous I/O
+     * @param time a real-time source of timestamp
+     * @param scheduler a real-time scheduler of tasks
+     * @param logFactory a factory to create logs
+     * @param metricFactory a factory to create metrics
+     * @param activatorFactory a factory to crate activators
+     * @param busName the unique name for this bus in this VM
+     * @param busClient the MOLD bus client
+     * @param schema the message schema the sequencer uses
+     * @param messageStore a store of messages
+     * @param eventChannelAddress the address of the multicast event channel
+     * @param commandChannelAddress the address of the multicast command channel
+     * @param discoveryChannelAddress the address of the multicast discovery channel
+     */
+    public MoldBusServer(
+            Selector selector,
+            Time time,
+            Scheduler scheduler,
+            LogFactory logFactory,
+            MetricFactory metricFactory,
+            ActivatorFactory activatorFactory,
+            String busName,
+            MoldBusClient<DispatcherT, ProviderT> busClient,
+            Schema<DispatcherT, ProviderT> schema,
+            MessageStore messageStore,
+            String eventChannelAddress,
+            String commandChannelAddress,
+            String discoveryChannelAddress) {
+        super(schema);
+        Objects.requireNonNull(selector, "selectService is null");
+        this.time = Objects.requireNonNull(time, "time is null");
+        Objects.requireNonNull(scheduler, "scheduler is null");
+        Objects.requireNonNull(logFactory, "logFactory is null");
+        Objects.requireNonNull(metricFactory, "metricFactory is null");
+        Objects.requireNonNull(activatorFactory, "activationManager is null");
+        Objects.requireNonNull(busName, "busName is null");
+        Objects.requireNonNull(busClient, "busClient is null");
+        Objects.requireNonNull(messageStore, "eventStore is null");
+        Objects.requireNonNull(eventChannelAddress, "eventChannelAddress is null");
+        Objects.requireNonNull(commandChannelAddress, "commandChannelAddress is null");
+        Objects.requireNonNull(discoveryChannelAddress, "discoveryChannelAddress is null");
+
+        timestampOffset = getSchema().getTimestampOffset();
+
+        session = new MoldSession(
+                busName + ":MoldServerSession:" + eventChannelAddress, time, activatorFactory);
+        busClient.getMoldSession().addOpenSessionListener(() -> session.setSessionSuffix(BufferUtils.fromAsciiString(
+                busClient.getMoldSession().getSessionNameAsString().substring(MoldConstants.SESSION_LENGTH - 2))));
+
+        eventPublisher = new MoldEventPublisher(
+                busName + ":MoldEventPublisher:" + eventChannelAddress,
+                selector,
+                logFactory,
+                activatorFactory,
+                session,
+                messageStore,
+                eventChannelAddress);
+
+        eventReceiver = busClient.getEventReceiver();
+
+        commandReceiver = new MoldCommandReceiver(
+                busName + ":MoldCommandReceiver:" + commandChannelAddress,
+                selector,
+                logFactory,
+                activatorFactory,
+                session,
+                commandChannelAddress,
+                true);
+
+        var rewinder = new MoldRewinder(
+                busName + ":MoldRewinder:" + discoveryChannelAddress,
+                selector,
+                logFactory,
+                activatorFactory,
+                session,
+                messageStore,
+                discoveryChannelAddress);
+
+        activator = activatorFactory.createActivator(
+                busName + ":MoldBusServer:" + eventChannelAddress,
                 this,
                 session, commandReceiver, rewinder, eventPublisher);
         activator.ready();
@@ -188,21 +279,8 @@ public class MoldBusServer<DispatcherT extends Dispatcher, ProviderT extends Pro
      * @throws IllegalArgumentException if {@code sessionSuffix} is not 2 bytes
      */
     @Command
-    public void createSession(DirectBuffer sessionSuffix) {
-        session.create(sessionSuffix);
-    }
-
-    /**
-     * Creates a session with a random suffix.
-     *
-     * @apiNote this is useful for testing where the session needs to be unique
-     */
-    @Command
-    public void randomSession() {
-        var random = new Random();
-        char letter1 = (char) ('A' + random.nextInt(26));
-        char letter2 = (char) ('A' + random.nextInt(26));
-        session.create(BufferUtils.fromAsciiString("" + letter1 + letter2));
+    public void setSessionSuffix(DirectBuffer sessionSuffix) {
+        session.setSessionSuffix(sessionSuffix);
     }
 
     @Override
@@ -216,8 +294,8 @@ public class MoldBusServer<DispatcherT extends Dispatcher, ProviderT extends Pro
     }
 
     @Override
-    public void setEventListener(Consumer<DirectBuffer> eventListener) {
-        eventReceiver.setEventListener(eventListener);
+    public void addEventListener(Consumer<DirectBuffer> eventListener) {
+        eventReceiver.addEventListener(eventListener);
     }
 
     @Override

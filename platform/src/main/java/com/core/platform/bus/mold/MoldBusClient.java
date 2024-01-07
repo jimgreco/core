@@ -112,7 +112,7 @@ public class MoldBusClient<DispatcherT extends Dispatcher, ProviderT extends Pro
                 moldSession,
                 eventChannelAddress,
                 discoveryChannelAddress);
-        eventReceiver.setEventListener(buffer -> dispatcher.dispatch(buffer, 0, buffer.capacity()));
+        eventReceiver.addEventListener(buffer -> dispatcher.dispatch(buffer, 0, buffer.capacity()));
 
         activator = activatorFactory.createActivator(
                 "MoldBusClient:" + eventChannelAddress, this, eventReceiver);
@@ -121,6 +121,10 @@ public class MoldBusClient<DispatcherT extends Dispatcher, ProviderT extends Pro
 
     MoldEventReceiver getEventReceiver() {
         return eventReceiver;
+    }
+
+    MoldSession getMoldSession() {
+        return moldSession;
     }
 
     @Override

@@ -1,6 +1,5 @@
 package com.core.platform.bus.mold;
 
-import com.core.infrastructure.buffer.BufferUtils;
 import com.core.infrastructure.command.Command;
 import com.core.infrastructure.command.Directory;
 import com.core.infrastructure.encoding.Encodable;
@@ -21,7 +20,6 @@ import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 
 import java.util.Objects;
-import java.util.Random;
 import java.util.function.Consumer;
 
 /**
@@ -116,6 +114,7 @@ public class TcpBusServer<DispatcherT extends Dispatcher, ProviderT extends Prov
                 messageSendAddress);
 
         commandReceiver = new MoldCommandReceiver(
+                "MoldCommandReceiver:" + messageReceiveAddress,
                 selector,
                 logFactory,
                 activatorFactory,
@@ -176,19 +175,6 @@ public class TcpBusServer<DispatcherT extends Dispatcher, ProviderT extends Prov
         session.create(sessionSuffix);
     }
 
-    /**
-     * Creates a session with a random suffix.
-     *
-     * @apiNote this is useful for testing where the session needs to be unique
-     */
-    @Command
-    public void randomSession() {
-        var random = new Random();
-        char letter1 = (char) ('A' + random.nextInt(26));
-        char letter2 = (char) ('A' + random.nextInt(26));
-        session.create(BufferUtils.fromAsciiString("" + letter1 + letter2));
-    }
-
     @Override
     public void activate() {
         messageReceiver.deactivate();
@@ -202,7 +188,7 @@ public class TcpBusServer<DispatcherT extends Dispatcher, ProviderT extends Prov
     }
 
     @Override
-    public void setEventListener(Consumer<DirectBuffer> messageListener) {
+    public void addEventListener(Consumer<DirectBuffer> messageListener) {
         messageReceiver.setMessageListener(messageListener);
     }
 
