@@ -10,7 +10,7 @@ create /bus/schema com.core.clob.schema.ClobSchema
 create /bus com.core.platform.bus.mold.MoldBusClient \
     client @/bus/schema $event_channel $command_channel $discovery_channel
 
-# Primary Sequencer
+# Sequencer
 create /busServer/store com.core.platform.bus.mold.BufferChannelMessageStore
 create /busServer com.core.platform.bus.mold.MoldBusServer \
     server @/bus/schema @/busServer/store $event_channel $command_channel $discovery_channel

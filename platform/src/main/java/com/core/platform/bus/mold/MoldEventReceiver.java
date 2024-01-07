@@ -87,6 +87,7 @@ class MoldEventReceiver implements Activatable, Encodable {
         packetBuffer = BufferUtils.allocateDirect(MoldConstants.MTU_SIZE);
         packetBufferWrapper = BufferUtils.emptyBuffer();
         activator = activatorFactory.createActivator(name, this);
+        activator.preventParentStop();
         eventListeners = new Consumer[0];
 
         metricFactory.registerGaugeMetric(

@@ -175,7 +175,6 @@ public class ClobCommandHandlers implements Encodable {
             instrumentId = (short) (symbolToId.size() + 1);
             symbolToId.put(BufferUtils.copy(ticker), instrumentId);
             idToSymbol.put(instrumentId, BufferUtils.copy(ticker));
-            busServer.setApplicationSequenceNumber(instrumentId, decoder.getApplicationSequenceNumber());
             bids.add(new IntrusiveLinkedList<>());
             asks.add(new IntrusiveLinkedList<>());
         }

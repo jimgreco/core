@@ -99,11 +99,11 @@ The core has a single application entry point, `com.core.platform.Main`, in the 
 A secondary entry point, `com.core.clob.ClobMain`, can be used for running applications inside the IDE.
 The following will launch a VM and load a commands file, `vm01.cmd`.
 
-    java --add-opens java.base/jdk.internal.misc=ALL-UNNAMED -DSHELL_PATH=infrastrucrture/src/main/resources:platform/src/main/resources:clob/src/main/resources -cp "." com.core.platform.Main -s clob.cmd
+    ./gradlew uberjar
+    java --add-opens java.base/jdk.internal.misc=ALL-UNNAMED -DSHELL_PATH=infrastrucrture/src/main/resources:platform/src/main/resources:clob/src/main/resources -jar clob/build/libs/core-1.0-SNAPSHOT.jar com.core.platform.Main -s clob.cmd 
 
 * The `--add-opens` argument is used to enable the high-precision timer. If left out, the application will fall back to a millisecond-precision timer.
 * Each `-D<variable name>=<variable value>` argument is available as a system property.
 `SHELL_PATH` is the sole required property, defining the path to the commands files (similar to a UNIX shell path).
-* `com.core.platform.Main` is the program that initializes the shells and read commands files.
 * Each `-s <file> [params ...]` loads and executes all commands in the specified commands file.
 

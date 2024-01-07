@@ -29,3 +29,12 @@ idea {
 
 compileJava.dependsOn('generateSchema')
 
+task uberjar(type: Jar) {
+    manifest {
+        attributes "Main-Class": "com.core.platform.Main"
+    }
+    archiveBaseName = 'core'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}

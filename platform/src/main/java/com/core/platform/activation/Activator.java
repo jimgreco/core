@@ -74,6 +74,7 @@ public class Activator implements Comparable<Activator>, Encodable {
     private boolean pendingReady;
     private boolean pendingNotReady;
     private String pendingNotReadyReason;
+    private boolean preventParentStop;
 
     Activator(Log log, MetricFactory metricFactory, ActivatorFactory activatorFactory, String name,
               Object activatorObject, List<Activator> children) {
@@ -195,6 +196,14 @@ public class Activator implements Comparable<Activator>, Encodable {
     }
 
     /**
+     * Prevents a stopping of this activator if all parents are stopped.
+     * This is useful for components you always want to run unless shutdown explicitly.
+     */
+    public void preventParentStop() {
+        preventParentStop = true;
+    }
+
+    /**
      * Sets the activator to the started state.
      * If the object associated with this activator is an {@code Activatable}, the activator is ready, and all
      * descendants are active then {@link Activatable#deactivate() activate} is invoked on the object.
@@ -285,7 +294,7 @@ public class Activator implements Comparable<Activator>, Encodable {
             started = false;
             pendingStopped = false;
             for (var child : children) {
-                if (!child.parentsStarted()) {
+                if (!child.parentsStarted() && !child.preventParentStop) {
                     child.stop();
                 }
             }

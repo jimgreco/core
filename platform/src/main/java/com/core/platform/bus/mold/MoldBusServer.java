@@ -1,6 +1,5 @@
 package com.core.platform.bus.mold;
 
-import com.core.infrastructure.buffer.BufferUtils;
 import com.core.infrastructure.command.Command;
 import com.core.infrastructure.command.Directory;
 import com.core.infrastructure.encoding.Encodable;
@@ -197,8 +196,11 @@ public class MoldBusServer<DispatcherT extends Dispatcher, ProviderT extends Pro
 
         session = new MoldSession(
                 busName + ":MoldServerSession:" + eventChannelAddress, time, activatorFactory);
-        busClient.getMoldSession().addOpenSessionListener(() -> session.setSessionSuffix(BufferUtils.fromAsciiString(
-                busClient.getMoldSession().getSessionNameAsString().substring(MoldConstants.SESSION_LENGTH - 2))));
+        busClient.getMoldSession().addOpenSessionListener(() -> {
+            if (session.getSessionName() == null) {
+                session.setSessionName(busClient.getMoldSession().getSessionName());
+            }
+        });
 
         eventPublisher = new MoldEventPublisher(
                 busName + ":MoldEventPublisher:" + eventChannelAddress,
