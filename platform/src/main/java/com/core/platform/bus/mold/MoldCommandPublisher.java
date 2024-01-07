@@ -11,14 +11,13 @@ import com.core.infrastructure.log.Log;
 import com.core.infrastructure.log.LogFactory;
 import com.core.infrastructure.messages.Decoder;
 import com.core.infrastructure.messages.Encoder;
+import com.core.infrastructure.messages.MessagePublisher;
 import com.core.infrastructure.messages.Schema;
 import com.core.infrastructure.time.Scheduler;
 import com.core.platform.activation.Activatable;
-import com.core.platform.activation.ActivatorFactory;
 import com.core.platform.activation.Activator;
+import com.core.platform.activation.ActivatorFactory;
 import com.core.platform.bus.BusClient;
-import com.core.infrastructure.messages.MessagePublisher;
-import com.core.platform.shell.Shell;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 
@@ -72,9 +71,7 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
 
     private static final int INITIAL_MAX_MESSAGES = 1000;
     private static final long SEND_TIMEOUT = TimeUnit.MILLISECONDS.toNanos(100);
-    private static final DirectBuffer VM_PROPERTY = BufferUtils.fromAsciiString("vm_name");
 
-    private final Shell shell;
     private final Log log;
     private final Selector selector;
     private final MoldSession moldSession;
@@ -89,9 +86,7 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
     private final Schema<?, ?> schema;
     private final Encoder appDefinitionEncoder;
     private final String applicationDefinitionNameField;
-    private final Encoder appDiscoveryEncoder;
     private final boolean multicast;
-    private final Object associatedObject;
 
     @Property
     private String commandChannelAddress;
@@ -113,7 +108,6 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
     private Runnable allCommandsClearedListener;
 
     MoldCommandPublisher(
-            Shell shell,
             Selector selector,
             Scheduler scheduler,
             LogFactory logFactory,
@@ -123,9 +117,7 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
             Object eventReceiver,
             String applicationName,
             String commandChannelAddress,
-            boolean multicast,
-            Object associatedObject) {
-        this.shell = Objects.requireNonNull(shell, "shell is null");
+            boolean multicast) {
         this.selector = Objects.requireNonNull(selector, "selectService is null");
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler is null");
         Objects.requireNonNull(logFactory, "logFactory is null");
@@ -137,7 +129,6 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
         this.commandChannelAddress = Objects.requireNonNull(
                 commandChannelAddress, "commandChannelAddress is null");
         this.multicast = multicast;
-        this.associatedObject = Objects.requireNonNull(associatedObject, "associatedObject is null");
 
         schema = busClient.getSchema();
         nextAppSeqNum = 1;
@@ -168,8 +159,6 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
                 .length());
         send();
 
-        appDiscoveryEncoder = schema.createEncoder("applicationDiscovery");
-
         activator = activatorFactory.createActivator("MoldCommandPublisher:" + applicationName, this, eventReceiver);
     }
 
@@ -188,17 +177,11 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
             commandChannel.connect(commandChannelAddress);
 
             initSession();
+            send();
 
             if (appId != 0) {
                 activator.ready();
             }
-
-            commit(appDiscoveryEncoder.wrap(acquire())
-                    .set("vmName", shell.getPropertyValue(VM_PROPERTY))
-                    .set("commandPath", BufferUtils.temp(shell.getPath(associatedObject)))
-                    .set("activationStatus", (byte) 1)
-                    .length());
-            send();
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
@@ -215,13 +198,6 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
     @Override
     public void deactivate() {
         try {
-            commit(appDiscoveryEncoder.wrap(acquire())
-                    .set("vmName", shell.getPropertyValue(VM_PROPERTY))
-                    .set("commandPath", BufferUtils.temp(shell.getPath(associatedObject)))
-                    .set("activationStatus", (byte) 2)
-                    .length());
-            send();
-
             activator.notReady("closed");
             commandChannel.close();
             sendTimeoutTaskId = scheduler.cancel(sendTimeoutTaskId);

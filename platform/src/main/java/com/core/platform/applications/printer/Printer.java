@@ -1,8 +1,8 @@
 package com.core.platform.applications.printer;
 
+import com.core.infrastructure.MemoryUnit;
 import com.core.infrastructure.buffer.BufferNumberUtils;
 import com.core.infrastructure.buffer.BufferUtils;
-import com.core.infrastructure.MemoryUnit;
 import com.core.infrastructure.collections.CoreMap;
 import com.core.infrastructure.command.Command;
 import com.core.infrastructure.command.Directory;
@@ -15,7 +15,6 @@ import com.core.infrastructure.io.WritableBufferChannel;
 import com.core.infrastructure.log.Log;
 import com.core.infrastructure.log.LogFactory;
 import com.core.infrastructure.messages.Decoder;
-import com.core.infrastructure.messages.Dispatcher;
 import com.core.infrastructure.messages.Field;
 import com.core.infrastructure.messages.Schema;
 import com.core.infrastructure.time.DatestampUtils;
@@ -85,11 +84,8 @@ public class Printer implements Encodable {
     private final MutableShortObjectMap<DirectBuffer> idToName;
     private final String applicationDefinitionMessageName;
     private final String applicationDefinitionNameField;
-    private final String sequencerRejectMessageName;
-    private final String sequencerRejectCommandField;
     private final TimestampFormatter timestampFormatter;
     private final Map<String, FieldFormatter> fieldToFormatterMap;
-    private final Dispatcher dispatcher;
 
     private WritableBufferChannel channel;
     @Property(write = true)
@@ -130,9 +126,6 @@ public class Printer implements Encodable {
         var schema = busClient.getSchema();
         applicationDefinitionMessageName = schema.getApplicationDefinitionMessageName();
         applicationDefinitionNameField = schema.getApplicationDefinitionNameField();
-        sequencerRejectMessageName = schema.getSequencerRejectMessageName();
-        sequencerRejectCommandField = schema.getSequencerRejectCommandField();
-        dispatcher = schema.createDispatcher();
 
         log = logFactory.create(getClass());
         suppressed = new UnifiedSet<>();
@@ -161,9 +154,6 @@ public class Printer implements Encodable {
         var schema = busClient.getSchema();
         applicationDefinitionMessageName = schema.getApplicationDefinitionMessageName();
         applicationDefinitionNameField = schema.getApplicationDefinitionNameField();
-        sequencerRejectMessageName = schema.getSequencerRejectMessageName();
-        sequencerRejectCommandField = schema.getSequencerRejectCommandField();
-        dispatcher = schema.createDispatcher();
 
         log = logFactory.create(getClass());
         suppressed = new UnifiedSet<>();
@@ -367,22 +357,8 @@ public class Printer implements Encodable {
             return lineBuffer.putStringWithoutLengthAscii(offset, "null");
         } else if (field.getType() == DirectBuffer.class) {
             var dbValue = (DirectBuffer) value;
-            if (decoder.messageName().equals(sequencerRejectMessageName)
-                    && field.getName().equals(sequencerRejectCommandField)) {
-                var position = offset;
-                var rejectDecoder = dispatcher.getDecoder(dbValue, 0, dbValue.capacity());
-                lineBuffer.putByte(position++, (byte) '{');
-                if (rejectDecoder == null) {
-                    position += lineBuffer.putStringWithoutLengthAscii(position, "unknown message");
-                } else {
-                    position += print(rejectDecoder, position);
-                }
-                lineBuffer.putByte(position++, (byte) '}');
-                return position - offset;
-            } else {
-                lineBuffer.putBytes(offset, dbValue, 0, dbValue.capacity());
-                return dbValue.capacity();
-            }
+            lineBuffer.putBytes(offset, dbValue, 0, dbValue.capacity());
+            return dbValue.capacity();
         } else {
             return lineBuffer.putStringWithoutLengthAscii(offset, value.toString());
         }

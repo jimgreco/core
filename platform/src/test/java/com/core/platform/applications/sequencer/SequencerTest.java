@@ -55,7 +55,6 @@ public class SequencerTest {
         busServer = new TestBusServer<>(time, schema, activatorFactory);
         eventPublisher = busServer.getEventPublisher();
         sequencer = new Sequencer(
-                null,
                 time,
                 scheduler,
                 activatorFactory,

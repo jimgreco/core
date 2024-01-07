@@ -145,14 +145,6 @@ public interface Encoder {
     Encoder setApplicationSequenceNumber(int value);
 
     /**
-     * Sets the identifier of the contributor that sent the message.
-     *
-     * @param value the identifier of the contributor that sent the message
-     * @return this
-     */
-    Encoder setSenderId(short value);
-
-    /**
      * Sets the time the sequencer published this message.
      *
      * @param value the time the sequencer published this message

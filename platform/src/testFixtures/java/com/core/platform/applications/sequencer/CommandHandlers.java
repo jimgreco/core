@@ -4,7 +4,6 @@ import com.core.infrastructure.buffer.BufferUtils;
 import com.core.infrastructure.command.Command;
 import com.core.infrastructure.log.Log;
 import com.core.infrastructure.log.LogFactory;
-import com.core.infrastructure.messages.Decoder;
 import com.core.platform.bus.BusServer;
 import com.core.platform.schema.ApplicationDefinitionDecoder;
 import com.core.platform.schema.ApplicationDefinitionEncoder;
@@ -12,8 +11,6 @@ import com.core.platform.schema.CurrencyDecoder;
 import com.core.platform.schema.CurrencyEncoder;
 import com.core.platform.schema.HeartbeatDecoder;
 import com.core.platform.schema.HeartbeatEncoder;
-import com.core.platform.schema.SequencerRejectDecoder;
-import com.core.platform.schema.SequencerRejectEncoder;
 import com.core.platform.schema.SpotDecoder;
 import com.core.platform.schema.SpotEncoder;
 import com.core.platform.schema.TestDispatcher;
@@ -38,7 +35,6 @@ public class CommandHandlers {
     private final HeartbeatEncoder heartbeatEncoder;
     private final CurrencyEncoder currencyEncoder;
     private final SpotEncoder spotEncoder;
-    private final SequencerRejectEncoder sequencerRejectEncoder;
     private final MutableObjectIntMap<DirectBuffer> currencyToId;
     private final MutableLongIntMap spotToId;
     private final MutableObjectShortMap<DirectBuffer> appToId;
@@ -67,7 +63,6 @@ public class CommandHandlers {
         appEncoder = new ApplicationDefinitionEncoder();
         currencyEncoder = new CurrencyEncoder();
         spotEncoder = new SpotEncoder();
-        sequencerRejectEncoder = new SequencerRejectEncoder();
 
         appToId = new ObjectShortHashMap<>();
         currencyToId = new ObjectIntHashMap<>();
@@ -76,7 +71,6 @@ public class CommandHandlers {
         var dispatcher = busServer.getDispatcher();
         dispatcher.addApplicationDefinitionListener(this::onApp);
         dispatcher.addHeartbeatListener(this::onHeartbeat);
-        dispatcher.addSequencerRejectListener(this::onSeqReject);
         dispatcher.addCurrencyListener(this::onCurrency);
         dispatcher.addSpotListener(this::onSpot);
     }
@@ -85,7 +79,6 @@ public class CommandHandlers {
         var name = decoder.getName();
         if (name.capacity() == 0) {
             log.warn().append("invalid name: ").append(name).commit();
-            sendReject(decoder, "name");
             return;
         }
 
@@ -104,15 +97,10 @@ public class CommandHandlers {
         BusServer.commit(busServer, heartbeatEncoder.copy(heartbeatDecoder,  busServer.acquire()));
     }
 
-    private void onSeqReject(SequencerRejectDecoder sequencerRejectDecoder) {
-        BusServer.commit(busServer, sequencerRejectEncoder.copy(sequencerRejectDecoder,  busServer.acquire()));
-    }
-
     private void onCurrency(CurrencyDecoder currencyDecoder) {
         var name = currencyDecoder.getName();
         if (name.capacity() == 0) {
             log.warn().append("invalid name: ").append(name).commit();
-            sendReject(currencyDecoder, "name");
             return;
         }
 
@@ -130,14 +118,12 @@ public class CommandHandlers {
         var baseCurrencyId = spotDecoder.getBaseCurrencyId();
         if (baseCurrencyId < 1 || baseCurrencyId > currencyToId.size()) {
             log.warn().append("invalid baseCurrencyId: ").append(baseCurrencyId).commit();
-            sendReject(spotDecoder, "baseCurrencyId");
             return;
         }
 
         var quoteCurrencyId = spotDecoder.getQuoteCurrencyId();
         if (quoteCurrencyId < 1 || quoteCurrencyId > currencyToId.size()) {
             log.warn().append("invalid quoteCurrencyId:").append(baseCurrencyId).commit();
-            sendReject(spotDecoder, "quoteCurrencyId");
             return;
         }
 
@@ -146,16 +132,6 @@ public class CommandHandlers {
 
         BusServer.commit(busServer, spotEncoder.copy(spotDecoder, busServer.acquire())
                 .setInstrumentId(spotId));
-    }
-
-    private void sendReject(Decoder decoder, String field) {
-        BusServer.commit(busServer, sequencerRejectEncoder.wrap(busServer.acquire())
-                .setApplicationId(decoder.getApplicationId())
-                .setApplicationSequenceNumber(decoder.getApplicationSequenceNumber())
-                .setReferenceMessageType(decoder.getMessageType())
-                .setOrderId(0)
-                .setField(field)
-                .setCommand(decoder.buffer(), 0, decoder.length()));
     }
 
     @Command(path = "status", readOnly = true)

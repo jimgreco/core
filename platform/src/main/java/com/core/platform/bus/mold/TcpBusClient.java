@@ -141,7 +141,6 @@ public class TcpBusClient<DispatcherT extends Dispatcher, ProviderT extends Prov
 
             if (messageProvider == null) {
                 var messagePublisher = new MoldCommandPublisher(
-                        shell,
                         selector,
                         scheduler,
                         logFactory,
@@ -151,8 +150,8 @@ public class TcpBusClient<DispatcherT extends Dispatcher, ProviderT extends Prov
                         messageReceiver,
                         applicationName,
                         messageSendAddress,
-                        false,
-                        associatedObject);
+                        false
+                );
                 shell.addObject(this, BufferUtils.fromAsciiString("publishers/" + applicationName), messagePublisher);
                 messageProvider = schema.createProvider(messagePublisher);
                 var providerActivator = activatorFactory.createActivator(

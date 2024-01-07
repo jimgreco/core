@@ -3,13 +3,12 @@ package com.core.platform.applications.refdata;
 import com.core.infrastructure.buffer.BufferUtils;
 import com.core.infrastructure.log.TestLogFactory;
 import com.core.infrastructure.messages.Field;
+import com.core.infrastructure.metrics.MetricFactory;
 import com.core.platform.activation.ActivatorFactory;
 import com.core.platform.applications.EntityDataRepository;
 import com.core.platform.bus.TestBusClient;
-import com.core.infrastructure.metrics.MetricFactory;
 import com.core.platform.schema.CurrencyDecoder;
 import com.core.platform.schema.CurrencyEncoder;
-import com.core.platform.schema.SequencerRejectEncoder;
 import com.core.platform.schema.SpotDecoder;
 import com.core.platform.schema.SpotEncoder;
 import com.core.platform.schema.TestDispatcher;
@@ -17,7 +16,6 @@ import com.core.platform.schema.TestSchema;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.BDDAssertions.then;
@@ -39,7 +37,6 @@ public class CoreReferenceDataSourceTest {
     private CurrencyEncoder eth;
     private SpotEncoder btcUsd;
     private SpotEncoder btcEth;
-    private SequencerRejectEncoder rejected;
 
     @BeforeEach
     void before_each() {
@@ -68,7 +65,7 @@ public class CoreReferenceDataSourceTest {
 
         new CoreReferenceDataSource(
                 logFactory,
-                busClient, "PUB01",
+                busClient,
                 entityMap, entityPublisher, "currency", "spot");
 
         usd = new CurrencyEncoder();
@@ -92,10 +89,6 @@ public class CoreReferenceDataSourceTest {
         btcEth.setInstrumentId(2);
         btcEth.setBaseCurrencyId(2);
         btcEth.setQuoteCurrencyId(3);
-
-        rejected = new SequencerRejectEncoder();
-        rejected.setApplicationId(busClient.getMessagePublisher("PUB01").getApplicationId());
-        rejected.setCommand(BufferUtils.copy(btcEth.buffer(), btcEth.offset(), btcEth.length()));
     }
 
     @Test
@@ -134,45 +127,6 @@ public class CoreReferenceDataSourceTest {
         then(messageName).isNull();
         then(primaryKey).isNull();
         then(entity).isNull();
-    }
-
-    @Test
-    void publish_rejected_entity() {
-        dispatcher.dispatch(usd.toDecoder());
-        dispatcher.dispatch(btc.toDecoder());
-        dispatcher.dispatch(eth.toDecoder());
-        clear();
-
-        dispatcher.dispatch(rejected.toDecoder());
-
-        then(messageName).isEqualTo("spot");
-        then(primaryKey).isNull();
-        then(entity.values().size()).isEqualTo(2);
-        then(entity.get(baseCurrencyIdField)).isEqualTo(List.of("BTC"));
-        then(entity.get(quoteCurrencyIdField)).isEqualTo(List.of("ETH"));
-    }
-
-    @Test
-    void do_not_publish_rejected_entity_with_invalid_foreign_keys() {
-        dispatcher.dispatch(btc.toDecoder());
-        clear();
-
-        dispatcher.dispatch(rejected.toDecoder());
-
-        then(messageName).isNull();
-    }
-
-    @Test
-    void do_not_publish_rejected_entity_from_another_contributor() {
-        dispatcher.dispatch(usd.toDecoder());
-        dispatcher.dispatch(btc.toDecoder());
-        dispatcher.dispatch(eth.toDecoder());
-        clear();
-        rejected.setApplicationId((short) 123);
-
-        dispatcher.dispatch(rejected.toDecoder());
-
-        then(messageName).isNull();
     }
 
     private void clear() {

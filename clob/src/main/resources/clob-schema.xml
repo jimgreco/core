@@ -1,19 +1,12 @@
 <core package="com.core.clob.schema" version="1" prefix="Clob">
     <properties>
         <property name="heartbeatMessageName" value="heartbeat"/>
-        <property name="sequencerRejectMessageName" value="sequencerReject"/>
-        <property name="sequencerRejectCommandField" value="command"/>
         <property name="applicationIdField" value="applicationId"/>
         <property name="applicationDefinitionMessageName" value="applicationDefinition"/>
         <property name="applicationDefinitionNameField" value="name"/>
     </properties>
 
     <enums>
-        <enum name="Status" description="the status of an entity">
-            <value name="Up" value="1" description="the application is sending orders"/>
-            <value name="Down" value="2" description="the application is no longer sending orders"/>
-        </enum>
-
         <enum name="Side" description="the side of the order">
             <value name="Buy" value="1" description="buy the instrument" />
             <value name="Sell" value="2" description="sell the instrument" />
@@ -23,7 +16,6 @@
     <header>
         <field name="ApplicationId" type="short" primary-key="true"/>
         <field name="ApplicationSequenceNumber" type="int"/>
-        <field name="SenderId" type="short"/>
         <field name="Timestamp" type="long" metadata="timestamp"/>
         <field name="OptionalFieldsIndex" type="short"/>
         <field name="SchemaVersion" type="byte"/>
@@ -33,29 +25,16 @@
     <messages>
         <message id="1" name="Heartbeat"/>
 
-        <message id="2" name="SequencerReject">
-            <field name="ReferenceMessageType" type="byte"/>
-            <field name="OrderId" type="int"/>
-            <optional id="1" name="Field" type="DirectBuffer"/>
-            <optional id="2" name="Command" type="DirectBuffer"/>
-        </message>
-
-        <message id="3" name="ApplicationDefinition" entity="application">
+        <message id="2" name="ApplicationDefinition" entity="application">
             <optional id="1" name="Name" type="DirectBuffer" key="true" description="the name of the application"/>
         </message>
 
-        <message id="4" name="ApplicationDiscovery" description="discovery information for locating application path">
-            <optional id="1" name="VmName" type="DirectBuffer" description="the server the application is hosted on"/>
-            <optional id="2" name="CommandPath" type="DirectBuffer" description="the command path of the application"/>
-            <optional id="3" name="ActivationStatus" type="Status" description="whether the status is active or not"/>
-        </message>
-
-        <message id="5" name="EquityDefinition" entity="equity">
+        <message id="3" name="EquityDefinition" entity="equity">
             <field name="InstrumentId" type="int" primary-key="true"/>
             <optional name="Ticker" type="DirectBuffer" key="true"/>
         </message>
 
-        <message id="6" name="AddOrder">
+        <message id="4" name="AddOrder">
             <field name="OrderId" type="int"/>
             <field name="Side" type="Side"/>
             <field name="Qty" type="long"/>
@@ -63,17 +42,17 @@
             <field name="Price" type="long"/>
         </message>
 
-        <message id="7" name="CancelOrder">
+        <message id="5" name="CancelOrder">
             <field name="OrderId" type="int"/>
         </message>
 
-        <message id="8" name="FillOrder">
+        <message id="6" name="FillOrder">
             <field name="OrderId" type="int"/>
             <field name="Qty" type="long"/>
             <field name="Price" type="long"/>
         </message>
 
-        <message id="9" name="RejectOrder">
+        <message id="7" name="RejectOrder">
             <field name="Side" type="byte"/>
             <field name="Qty" type="long"/>
             <field name="InstrumentId" type="int" foreign-key="equity"/>
@@ -81,7 +60,7 @@
             <optional name="Reason" type="DirectBuffer"/>
         </message>
 
-        <message id="10" name="RejectCancel">
+        <message id="8" name="RejectCancel">
             <field name="OrderId" type="int"/>
             <optional name="Reason" type="DirectBuffer"/>
         </message>

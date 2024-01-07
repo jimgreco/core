@@ -72,7 +72,7 @@ public class ReferenceDataPublisher implements Publisher, Activatable {
         }
 
         csvRefDataSource = new CsvReferenceDataSource(logFactory, busClient, this, messageNames);
-        new CoreReferenceDataSource(logFactory, busClient, applicationName, entityDataRepository, this, messageNames);
+        new CoreReferenceDataSource(logFactory, busClient, entityDataRepository, this, messageNames);
 
         activator = activatorFactory.createActivator(applicationName, this, provider);
     }

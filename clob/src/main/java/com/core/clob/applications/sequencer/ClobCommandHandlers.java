@@ -5,7 +5,6 @@ import com.core.clob.schema.AddOrderDecoder;
 import com.core.clob.schema.AddOrderEncoder;
 import com.core.clob.schema.ApplicationDefinitionDecoder;
 import com.core.clob.schema.ApplicationDefinitionEncoder;
-import com.core.clob.schema.ApplicationDiscoveryDecoder;
 import com.core.clob.schema.CancelOrderDecoder;
 import com.core.clob.schema.CancelOrderEncoder;
 import com.core.clob.schema.ClobDispatcher;
@@ -49,10 +48,8 @@ import java.util.Objects;
  *
  * <ol>
  *    <li>{@link HeartbeatDecoder} has no validation and is copied.
- *    <li>{@link com.core.clob.schema.SequencerRejectDecoder} is ignored and not used by the CLOB.
  *    <li>{@link ApplicationDefinitionDecoder} checks that the {@code name} field is not empty and assigns a
  *        monotonically increasing number to the {@code applicationId} field.
- *    <li>{@link ApplicationDiscoveryDecoder} has no validation and is copied.
  *    <li>{@link EquityDefinitionDecoder} checks that the {@code ticker} field is not empty and assigns a
  *        monotonically increasing number to the {@code instrumentId} field.
  *    <li>{@link AddOrderDecoder} validates that the {@code side} field is a valid enumeration set value, the
@@ -129,7 +126,6 @@ public class ClobCommandHandlers implements Encodable {
         var dispatcher = busServer.getDispatcher();
         dispatcher.addHeartbeatListener(this::onHeartbeat);
         dispatcher.addApplicationDefinitionListener(this::onAppDef);
-        dispatcher.addApplicationDiscoveryListener(this::onAppDisc);
         dispatcher.addEquityDefinitionListener(this::onEquityDef);
         dispatcher.addAddOrderListener(this::onAddOrder);
         dispatcher.addCancelOrderListener(this::onCancelOrder);
@@ -157,10 +153,6 @@ public class ClobCommandHandlers implements Encodable {
 
         BusServer.commit(busServer, appDefEncoder.copy(decoder, busServer.acquire())
                 .setApplicationId(appId));
-    }
-
-    private void onAppDisc(ApplicationDiscoveryDecoder decoder) {
-        BusServer.copy(busServer, decoder);
     }
 
     private void onEquityDef(EquityDefinitionDecoder decoder) {

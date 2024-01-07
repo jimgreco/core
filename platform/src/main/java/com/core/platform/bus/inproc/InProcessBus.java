@@ -55,8 +55,6 @@ import java.util.function.Consumer;
  */
 public class InProcessBus<DispatcherT extends Dispatcher, ProviderT extends Provider> implements Runnable {
 
-    private static final DirectBuffer VM_NAME = BufferUtils.fromAsciiString("vm_name");
-
     private final Selector selector;
     private final Scheduler scheduler;
     private final Time time;
@@ -75,7 +73,6 @@ public class InProcessBus<DispatcherT extends Dispatcher, ProviderT extends Prov
     private final InProcessBusServer server;
 
     private final Encoder appDefinitionEncoder;
-    private final Encoder appDiscoveryEncoder;
 
     private String sessionString;
 
@@ -112,7 +109,6 @@ public class InProcessBus<DispatcherT extends Dispatcher, ProviderT extends Prov
         log = logFactory.create(InProcessBus.class);
         dispatcher = schema.createDispatcher();
         appDefinitionEncoder = schema.createEncoder("applicationDefinition");
-        appDiscoveryEncoder = schema.createEncoder("applicationDiscovery");
 
         messagePool = new ObjectPool<>(Message::new);
         client = new InProcessBusClient();
@@ -240,24 +236,10 @@ public class InProcessBus<DispatcherT extends Dispatcher, ProviderT extends Prov
             if (applicationId != 0) {
                 activator.ready();
             }
-
-            commit(appDiscoveryEncoder.wrap(acquire())
-                    .set("vmName", shell.getPropertyValue(VM_NAME))
-                    .set("commandPath", BufferUtils.temp(shell.getPath(associatedObject)))
-                    .set("activationStatus", (byte) 1)
-                    .length());
-            send();
         }
 
         @Override
         public void deactivate() {
-            commit(appDiscoveryEncoder.wrap(acquire())
-                    .set("vmName", shell.getPropertyValue(VM_NAME))
-                    .set("commandPath", BufferUtils.temp(shell.getPath(associatedObject)))
-                    .set("activationStatus", (byte) 2)
-                    .length());
-            send();
-
             activator.notReady();
             open = false;
         }

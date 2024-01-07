@@ -113,13 +113,6 @@ public interface Decoder {
     int getApplicationSequenceNumber();
 
     /**
-     * Returns the identifier of the contributor that sent the message.
-     *
-     * @return the identifier of the contributor that sent the message
-     */
-    short getSenderId();
-
-    /**
      * Returns the time the sequencer published this message.
      *
      * @return the time the sequencer published this message

@@ -4,8 +4,6 @@ import com.core.clob.applications.sequencer.ClobCommandHandlers.Order;
 import com.core.clob.schema.AddOrderDecoder;
 import com.core.clob.schema.AddOrderEncoder;
 import com.core.clob.schema.ApplicationDefinitionEncoder;
-import com.core.clob.schema.ApplicationDiscoveryDecoder;
-import com.core.clob.schema.ApplicationDiscoveryEncoder;
 import com.core.clob.schema.CancelOrderEncoder;
 import com.core.clob.schema.ClobDispatcher;
 import com.core.clob.schema.ClobProvider;
@@ -17,7 +15,6 @@ import com.core.clob.schema.HeartbeatEncoder;
 import com.core.clob.schema.RejectCancelDecoder;
 import com.core.clob.schema.RejectOrderDecoder;
 import com.core.clob.schema.Side;
-import com.core.clob.schema.Status;
 import com.core.infrastructure.buffer.BufferUtils;
 import com.core.infrastructure.log.TestLogFactory;
 import com.core.infrastructure.metrics.MetricFactory;
@@ -53,7 +50,6 @@ public class ClobCommandHandlersTest {
         busServer = new TestBusServer<>(time, new ClobSchema(), activatorFactory);
         eventPublisher = busServer.getEventPublisher();
         var sequencer = new Sequencer(
-                null,
                 time,
                 scheduler,
                 activatorFactory,
@@ -616,24 +612,6 @@ public class ClobCommandHandlersTest {
             HeartbeatDecoder hb = eventPublisher.remove();
             then(hb.getApplicationId()).isEqualTo(appId);
             then(hb.getApplicationSequenceNumber()).isEqualTo(seqNum);
-        }
-
-        @Test
-        void appDisc_is_copied() {
-            var appId = handler.getAppId(BufferUtils.fromAsciiString("LEHM01"));
-            var seqNum = busServer.getApplicationSequenceNumber(appId) + 1;
-
-            busServer.publishCommand(new ApplicationDiscoveryEncoder()
-                    .setApplicationId(appId)
-                    .setApplicationSequenceNumber(seqNum)
-                    .setCommandPath("/foo/bar")
-                    .setVmName("vm01")
-                    .setActivationStatus(Status.UP));
-
-            ApplicationDiscoveryDecoder disc = eventPublisher.remove();
-            then(disc.commandPathAsString()).isEqualTo("/foo/bar");
-            then(disc.vmNameAsString()).isEqualTo("vm01");
-            then(disc.getActivationStatus()).isEqualTo(Status.UP);
         }
     }
 

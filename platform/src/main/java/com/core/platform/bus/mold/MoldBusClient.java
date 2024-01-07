@@ -144,7 +144,6 @@ public class MoldBusClient<DispatcherT extends Dispatcher, ProviderT extends Pro
 
             if (commandProvider == null) {
                 var messagePublisher = new MoldCommandPublisher(
-                        shell,
                         selector,
                         scheduler,
                         logFactory,
@@ -154,8 +153,8 @@ public class MoldBusClient<DispatcherT extends Dispatcher, ProviderT extends Pro
                         eventReceiver,
                         applicationName,
                         commandChannelAddress,
-                        true,
-                        associatedObject);
+                        true
+                );
                 shell.addObject(this, BufferUtils.fromAsciiString("publishers/" + applicationName), messagePublisher);
                 commandProvider = schema.createProvider(messagePublisher);
                 var providerActivator = activatorFactory.createActivator(

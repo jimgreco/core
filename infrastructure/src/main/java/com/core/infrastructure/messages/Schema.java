@@ -82,26 +82,6 @@ public interface Schema<DispatcherT extends Dispatcher, ProviderT extends Provid
     }
 
     /**
-     * Returns the value of the "sequencerRejectMessageName" property.
-     *
-     * @return the value of the "sequencerRejectMessageName" property
-     * @implSpec the default implementation returns the value of {@code getProperty("sequencerRejectMessageName")}
-     */
-    default String getSequencerRejectMessageName() {
-        return getProperty("sequencerRejectMessageName");
-    }
-
-    /**
-     * Returns the value of the "sequencerRejectCommandField" property.
-     *
-     * @return the value of the "sequencerRejectCommandField" property
-     * @implSpec the default implementation returns the value of {@code getProperty("sequencerRejectCommandField")}
-     */
-    default String getSequencerRejectCommandField() {
-        return getProperty("sequencerRejectCommandField");
-    }
-
-    /**
      * Returns the value of the "applicationDefinitionMessageName" property.
      *
      * @return the value of the "applicationDefinitionMessageName" property

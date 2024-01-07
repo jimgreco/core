@@ -2,8 +2,8 @@ package com.core.platform.applications.sequencer;
 
 import com.core.infrastructure.buffer.BufferUtils;
 import com.core.infrastructure.command.Command;
-import com.core.infrastructure.command.Property;
 import com.core.infrastructure.command.Directory;
+import com.core.infrastructure.command.Property;
 import com.core.infrastructure.encoding.Encodable;
 import com.core.infrastructure.encoding.ObjectEncoder;
 import com.core.infrastructure.log.Log;
@@ -17,7 +17,6 @@ import com.core.platform.activation.Activatable;
 import com.core.platform.activation.Activator;
 import com.core.platform.activation.ActivatorFactory;
 import com.core.platform.bus.BusServer;
-import com.core.platform.shell.Shell;
 import org.agrona.DirectBuffer;
 
 import java.util.Objects;
@@ -52,7 +51,6 @@ import java.util.concurrent.TimeUnit;
 public class Sequencer implements Activatable, Encodable {
 
     private static final int DEFAULT_HEARTBEAT_TIMEOUT_MS = 100;
-    private static final DirectBuffer VM_PROPERTY = BufferUtils.fromAsciiString("vm_name");
 
     private final Schema<?, ?> schema;
     private final BusServer<?, ?> busServer;
@@ -65,10 +63,8 @@ public class Sequencer implements Activatable, Encodable {
 
     private final Encoder heartbeatEncoder;
     private final Encoder appDefinitionEncoder;
-    private final Encoder appDiscoveryEncoder;
 
     private final Runnable cachedSendHeartbeat;
-    private final Shell shell;
 
     @Property(write = true)
     private long heartbeatTimeout;
@@ -82,7 +78,6 @@ public class Sequencer implements Activatable, Encodable {
      * The sequencer will also schedule a recurring heartbeat message, with the name of the heartbeat message and the
      * duration between heartbeats specified by the constructor parameters.
      *
-     * @param shell the command shell
      * @param time the time source for event timestamps
      * @param scheduler a scheduler to send heartbeats
      * @param activatorFactory a factory to create activators
@@ -91,14 +86,12 @@ public class Sequencer implements Activatable, Encodable {
      * @param applicationName the name of the application
      */
     public Sequencer(
-            Shell shell,
             Time time,
             Scheduler scheduler,
             ActivatorFactory activatorFactory,
             LogFactory logFactory,
             BusServer<?, ?> busServer,
             String applicationName) {
-        this.shell = shell;
         this.time = Objects.requireNonNull(time, "time is null");
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler is null");
         Objects.requireNonNull(activatorFactory, "activationManager is null");
@@ -119,8 +112,6 @@ public class Sequencer implements Activatable, Encodable {
                 .wrap(BufferUtils.allocate(100))
                 .setApplicationSequenceNumber(1)
                 .set(appDefinitionNameField, BufferUtils.fromAsciiString(applicationName));
-        appDiscoveryEncoder = schema.createEncoder("applicationDiscovery")
-                .wrap(BufferUtils.allocate(1000));
 
         dispatcher = busServer.getDispatcher();
         log = logFactory.create(getClass());
@@ -221,25 +212,11 @@ public class Sequencer implements Activatable, Encodable {
         activator.ready();
 
         sendHeartbeat();
-        sendAppDiscovery(1);
     }
 
     @Override
     public void deactivate() {
         heartbeatTaskId = scheduler.cancel(heartbeatTaskId);
-        sendAppDiscovery(2);
         activator.notReady();
-    }
-
-    private void sendAppDiscovery(int status) {
-        if (shell != null) {
-            var appSeqNum = busServer.getApplicationSequenceNumber(busServer.getApplicationId()) + 1;
-            appDiscoveryEncoder.setApplicationId(busServer.getApplicationId())
-                    .setApplicationSequenceNumber(appSeqNum)
-                    .set("vmName", shell.getPropertyValue(VM_PROPERTY))
-                    .set("commandPath", BufferUtils.temp(shell.getPath(this)))
-                    .set("activationStatus", (byte) status);
-            onCommand(appDiscoveryEncoder.buffer(), appDiscoveryEncoder.offset(), appDiscoveryEncoder.length());
-        }
     }
 }

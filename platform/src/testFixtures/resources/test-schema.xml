@@ -1,8 +1,6 @@
 <core package="com.core.platform.schema" version="1" prefix="Test">
     <properties>
         <property name="heartbeatMessageName" value="heartbeat"/>
-        <property name="sequencerRejectMessageName" value="sequencerReject"/>
-        <property name="sequencerRejectCommandField" value="command"/>
         <property name="applicationIdField" value="applicationId"/>
         <property name="applicationDefinitionMessageName" value="applicationDefinition"/>
         <property name="applicationDefinitionNameField" value="name"/>
@@ -15,16 +13,9 @@
         </enum>
     </enums>
 
-    <enum name="Status" description="the status of an entity">
-        <value name="Up" value="1" description="the application is sending orders"/>
-        <value name="Down" value="2" description="the application is no longer sending orders"/>
-        <value name="Lockdown" value="3" description="the application is no longer allowed to send orders"/>
-    </enum>
-
     <header>
         <field name="ApplicationId" type="short" primary-key="true"/>
         <field name="ApplicationSequenceNumber" type="int"/>
-        <field name="SenderId" type="short"/>
         <field name="Timestamp" type="long" metadata="timestamp"/>
         <field name="OptionalFieldsIndex" type="short"/>
         <field name="SchemaVersion" type="byte"/>
@@ -33,13 +24,6 @@
 
     <messages>
         <message id="-1" name="Heartbeat"/>
-
-        <message id="-2" name="SequencerReject">
-            <field name="ReferenceMessageType" type="byte"/>
-            <field name="OrderId" type="int"/>
-            <optional id="1" name="Field" type="DirectBuffer"/>
-            <optional id="2" name="Command" type="DirectBuffer"/>
-        </message>
 
         <message id="-3" name="Currency" entity="cx">
             <field name="CurrencyId" type="int" primary-key="true"/>
@@ -74,12 +58,6 @@
         <message id="-8" name="Venue" entity="venue">
             <field name="VenueId" type="int" primary-key="true"/>
             <optional id="1" name="Name" type="DirectBuffer" key="true"/>
-        </message>
-
-        <message id="-9" name="ApplicationDiscovery" description="discovery information for locating application path">
-            <optional id="1" name="VmName" type="DirectBuffer" description="the server the application is hosted on"/>
-            <optional id="2" name="CommandPath" type="DirectBuffer" description="the command path of the application"/>
-            <optional id="3" name="ActivationStatus" type="Status" description="whether the status is active or not"/>
         </message>
     </messages>
 </core>
