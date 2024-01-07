@@ -62,10 +62,6 @@ import java.util.concurrent.TimeUnit;
  *         <td>The message contents</td>
  *     </tr>
  * </table>
- *
- * <p>This command publisher only supports a single message in the packet.
- * The second, third, ..., Nth message in the packet would be stored sequentially after the first message with a 2-byte
- * length and the message contents for each message.
  */
 class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
 
@@ -93,13 +89,13 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
     private Packet[] packets;
     private Packet currentPacket;
     @Property
-    private int nextConfirmedPacketIndex;
+    private int inPacketIndex;
     @Property
-    private int nextPacketIndex;
+    private int outPacketIndex;
     @Property
-    private int nextConfirmedAppSeqNum;
+    private int inSeqNum;
     @Property
-    private int nextAppSeqNum;
+    private int outSeqNum;
 
     private DatagramChannel commandChannel;
     @Property
@@ -131,15 +127,15 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
         this.multicast = multicast;
 
         schema = busClient.getSchema();
-        nextAppSeqNum = 1;
-        nextConfirmedAppSeqNum = 1;
+        outSeqNum = 1;
+        inSeqNum = 1;
 
         packets = new Packet[INITIAL_MAX_MESSAGES];
         for (var i = 0; i < packets.length; i++) {
             packets[i] = new Packet();
         }
         currentPacket = packets[0];
-        currentPacket.init(nextAppSeqNum);
+        currentPacket.init(outSeqNum);
 
         messageWrapper = BufferUtils.mutableEmptyBuffer();
         log = logFactory.create(getClass());
@@ -222,8 +218,8 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
         if (currentPacket.length + fullMsgLength <= MoldConstants.MTU_SIZE) {
             // sets the applicationId and applicationSequenceNumber in the message header
             messageWrapper.putShort(schema.getApplicationIdOffset(), appId);
-            messageWrapper.putInt(schema.getApplicationSequenceNumberOffset(), nextAppSeqNum);
-            nextAppSeqNum++;
+            messageWrapper.putInt(schema.getApplicationSequenceNumberOffset(), outSeqNum);
+            outSeqNum++;
             // clear so the buffer can't be written to again
             messageWrapper.wrap(0, 0);
 
@@ -248,16 +244,16 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
             // set the number of messages in the packet header
             currentPacket.buffer.putShort(MoldConstants.NUM_MESSAGES_OFFSET, currentPacket.numMessages);
 
-            nextPacketIndex++;
+            outPacketIndex++;
             checkResize();
-            currentPacket = packets[nextPacketIndex % packets.length];
-            currentPacket.init(nextAppSeqNum);
+            currentPacket = packets[outPacketIndex % packets.length];
+            currentPacket.init(outSeqNum);
         }
 
         try {
-            if (sendTimeoutTaskId == 0 && nextConfirmedPacketIndex < nextPacketIndex
+            if (sendTimeoutTaskId == 0 && inPacketIndex < outPacketIndex
                     && commandChannel != null && commandChannel.isOpen()) {
-                var packetInFlight = packets[nextConfirmedPacketIndex % packets.length];
+                var packetInFlight = packets[inPacketIndex % packets.length];
                 sendTimeoutTaskId = scheduler.scheduleIn(
                         sendTimeoutTaskId, SEND_TIMEOUT, onSendTimeout, scheduledTaskName,
                         packetInFlight.firstAppSeqNum);
@@ -266,7 +262,7 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
         } catch (IOException e) {
             log.warn().append("error sending command, closing command channel socket: application=")
                     .append(applicationName)
-                    .append(", appSeqNum=").append(nextConfirmedAppSeqNum)
+                    .append(", appSeqNum=").append(inSeqNum)
                     .append(", exception=").append(e)
                     .commit();
             activator.stop();
@@ -279,7 +275,7 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
     }
 
     private void checkResize() {
-        if (nextConfirmedPacketIndex + packets.length == nextPacketIndex) {
+        if (inPacketIndex + packets.length == outPacketIndex) {
             // resize
             var newPackets = new Packet[2 * packets.length];
             log.warn().append("resizing packet buffer: oldMaxPackets=").append(packets.length)
@@ -287,7 +283,7 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
                     .commit();
 
             // copy over old packets
-            for (var i = nextConfirmedPacketIndex; i < nextPacketIndex; i++) {
+            for (var i = inPacketIndex; i < outPacketIndex; i++) {
                 newPackets[i % newPackets.length] = packets[i % packets.length];
             }
             // fill in empty new packets
@@ -309,14 +305,14 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
 
     @Override
     public boolean isCurrent() {
-        return nextConfirmedAppSeqNum == nextAppSeqNum;
+        return inSeqNum == outSeqNum;
     }
 
     private void onSendTimeout() {
         log.warn().append("command sending timeout: session=").append(moldSession.getSessionName())
                 .append(", application=").append(applicationName)
-                .append(", appSeqNum=").append(nextConfirmedAppSeqNum)
-                .append(", nextAppSeqNum=").append(nextAppSeqNum)
+                .append(", appSeqNum=").append(inSeqNum)
+                .append(", nextAppSeqNum=").append(outSeqNum)
                 .commit();
         sendTimeoutTaskId = 0;
         send();
@@ -325,7 +321,6 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
     private void onBeforeMessage(Decoder decoder) {
         if (decoder.getApplicationId() == appId) {
             checkPacket(decoder);
-
             send();
         } else if (appId == 0
                 && decoder.messageName().equals(appDefinitionEncoder.messageName())
@@ -334,7 +329,7 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
             checkPacket(decoder);
 
             // write the applicationId for all the queued messages
-            for (var i = nextConfirmedPacketIndex; i < nextPacketIndex; i++) {
+            for (var i = inPacketIndex; i < outPacketIndex; i++) {
                 var packet = packets[i % packets.length];
                 var packetOffset = MoldConstants.HEADER_SIZE;
                 while (packetOffset < packet.length) {
@@ -345,26 +340,44 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
                 }
             }
 
-            activator.ready();
+            // be ready if sending
+            if (commandChannel != null && commandChannel.isOpen()) {
+                activator.ready();
+            }
             send();
         }
     }
 
     private void checkPacket(Decoder decoder) {
-        nextConfirmedAppSeqNum = decoder.getApplicationSequenceNumber() + 1;
-        var finishedPacket = false;
-
-        var packet = packets[nextConfirmedPacketIndex % packets.length];
-        while (nextConfirmedPacketIndex < nextPacketIndex
-                && packet.firstAppSeqNum + packet.numMessages <= nextConfirmedAppSeqNum) {
-            finishedPacket = true;
-            packet.reset();
-            nextConfirmedPacketIndex++;
-            packet = packets[nextConfirmedPacketIndex % packets.length];
-        }
-
-        if (finishedPacket) {
+        inSeqNum = decoder.getApplicationSequenceNumber() + 1;
+        if (inSeqNum >= outSeqNum) {
+            // the stream is current with or ahead of the command sender
+            // update the next outbound sequence number so it matches what is expected from the stream next
+            outSeqNum = inSeqNum;
+            // reset all pending outbound packets
+            for (var i = inPacketIndex; i < outPacketIndex; i++) {
+                packets[i].reset();
+            }
+            inPacketIndex = 0;
+            outPacketIndex = 0;
             sendTimeoutTaskId = scheduler.cancel(sendTimeoutTaskId);
+            currentPacket = packets[0];
+            currentPacket.init(outSeqNum);
+        } else {
+            var finishedPacket = false;
+
+            var packet = packets[inPacketIndex % packets.length];
+            while (inPacketIndex < outPacketIndex
+                    && packet.firstAppSeqNum + packet.numMessages <= inSeqNum) {
+                finishedPacket = true;
+                packet.reset();
+                inPacketIndex++;
+                packet = packets[inPacketIndex % packets.length];
+            }
+
+            if (finishedPacket) {
+                sendTimeoutTaskId = scheduler.cancel(sendTimeoutTaskId);
+            }
         }
     }
 
@@ -391,10 +404,10 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
                 .string("commandChannelOpen").bool(commandChannel != null && commandChannel.isOpen())
                 .string("activator").object(activator)
                 .string("allocatedPackets").number(packets.length)
-                .string("nextConfirmedPacket").number(nextConfirmedPacketIndex)
-                .string("nextPacket").number(nextPacketIndex)
-                .string("nextConfirmedAppSeqNum").number(nextConfirmedAppSeqNum)
-                .string("nextAppSeqNum").number(nextAppSeqNum)
+                .string("nextConfirmedPacket").number(inPacketIndex)
+                .string("nextPacket").number(outPacketIndex)
+                .string("nextConfirmedAppSeqNum").number(inSeqNum)
+                .string("nextAppSeqNum").number(outSeqNum)
                 .string("current").bool(isCurrent())
                 .closeMap();
     }
