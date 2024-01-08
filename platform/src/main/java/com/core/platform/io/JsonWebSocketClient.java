@@ -8,7 +8,6 @@ import com.core.infrastructure.encoding.ObjectEncoder;
 import com.core.infrastructure.io.InetAddressUtils;
 import com.core.infrastructure.io.Selector;
 import com.core.infrastructure.io.SocketChannel;
-import com.core.infrastructure.io.SslSocketChannel;
 import com.core.infrastructure.io.WebSocketConstants;
 import com.core.infrastructure.time.Scheduler;
 import org.agrona.DirectBuffer;
@@ -28,7 +27,7 @@ import java.util.function.Consumer;
  * https://datatracker.ietf.org/doc/html/rfc6455
  *
  * <p>To connect to the server, invoke {@link #connect(String, String)} connect}.
- * The socket connection, SSL handshake, and WebSocket connection upgrade will be completed by this object.
+ * The socket connection and WebSocket connection upgrade will be completed by this object.
  *
  * <p>The initial connection is an HTTP upgrade request.
  * <pre>
@@ -76,7 +75,7 @@ import java.util.function.Consumer;
  * Text, binary, and continuation frames are received and dispatched to the listener specified with
  * {@link #setReadListener(Consumer) setReadListener}.
  */
-public class JsonWebSocketClient extends AbstractJsonWebSocket implements SslProtocolClient, Encodable {
+public class JsonWebSocketClient extends AbstractJsonWebSocket implements ProtocolClient, Encodable {
 
     private static final long DEFAULT_RECONNECT_TIMEOUT = TimeUnit.SECONDS.toNanos(5);
     protected static final DirectBuffer PING;
@@ -97,9 +96,7 @@ public class JsonWebSocketClient extends AbstractJsonWebSocket implements SslPro
     private static final Random RANDOM = new Random();
 
     private final Selector selector;
-    private final Runnable cachedHandshakeComplete;
     private final Runnable cachedConnect;
-    private final Runnable cachedConnectionFailed;
     private final Runnable cachedRead;
     private final DirectBuffer tempWrapper;
 
@@ -119,10 +116,10 @@ public class JsonWebSocketClient extends AbstractJsonWebSocket implements SslPro
     private long reconnectTimeout;
     private long reconnectTaskId;
     private boolean reconnect;
-    private SslSocketChannel channel;
+    private SocketChannel channel;
 
     /**
-     * Creates a {@code JsonWebSocketClient} with the specified {@code selector} used to create SSL sockets and
+     * Creates a {@code JsonWebSocketClient} with the specified {@code selector} used to create sockets and
      * {@code scheduler} for scheduling reconnect tasks.
      *
      * <p>The default read buffer size is 32kb and write buffer size is 1kb.
@@ -137,8 +134,6 @@ public class JsonWebSocketClient extends AbstractJsonWebSocket implements SslPro
         reconnectTimeout = DEFAULT_RECONNECT_TIMEOUT;
 
         cachedConnect = this::onConnect;
-        cachedHandshakeComplete = this::onHandshakeComplete;
-        cachedConnectionFailed = this::onConnectionFailed;
         cachedRead = this::onRead;
         cachedReconnect = this::reconnect;
 
@@ -152,14 +147,14 @@ public class JsonWebSocketClient extends AbstractJsonWebSocket implements SslPro
         return upgradingConnectionComplete;
     }
 
+    @Override
     public Exception getConnectionFailedException() {
-        return channel.getConnectionFailedException() == null
-                ? connectionFailedException : channel.getConnectionFailedException();
+        return connectionFailedException;
     }
 
+    @Override
     public String getConnectionFailedReason() {
-        return channel.getConnectionFailedReason() == null
-                ? connectionFailedReason : channel.getConnectionFailedReason();
+        return connectionFailedReason;
     }
 
     @Override
@@ -236,12 +231,10 @@ public class JsonWebSocketClient extends AbstractJsonWebSocket implements SslPro
                     ioListener.onConnectionEvent(buf, 0, length);
                 }
 
-                channel = selector.createSslSocketChannel();
+                channel = selector.createSocketChannel();
                 channel.configureBlocking(false);
                 channel.setReadListener(cachedRead);
                 channel.setConnectListener(cachedConnect);
-                channel.setHandshakeCompleteListener(cachedHandshakeComplete);
-                channel.setConnectionFailedListener(cachedConnectionFailed);
                 channel.connect(host);
             }
         } catch (Exception e) {
@@ -283,7 +276,7 @@ public class JsonWebSocketClient extends AbstractJsonWebSocket implements SslPro
                     ioListener.onConnectionEvent(buf, 0, length);
                 }
                 reconnectTaskId = scheduler.scheduleIn(
-                        reconnectTaskId, reconnectTimeout, cachedReconnect, "SslSocketChannelImpl:reconnect", 0);
+                        reconnectTaskId, reconnectTimeout, cachedReconnect, "WebSocket:reconnect", 0);
             }
 
             readBufferLength = 0;
@@ -371,7 +364,8 @@ public class JsonWebSocketClient extends AbstractJsonWebSocket implements SslPro
         if (ioListener != null) {
             ioListener.onConnectionEvent("WebSocket connected");
         }
-        // we need to let SSL take care of the rest
+
+        sendUpgradeRequest();
     }
 
     protected boolean preParse(DirectBuffer buffer) {
@@ -554,11 +548,8 @@ public class JsonWebSocketClient extends AbstractJsonWebSocket implements SslPro
         readBufferLength -= offset;
     }
 
-    private void onHandshakeComplete() {
+    private void sendUpgradeRequest() {
         try {
-            if (ioListener != null) {
-                ioListener.onConnectionEvent("WebSocket SSL handshake complete");
-            }
             var length = 0;
             length += writeBuffer.putStringWithoutLengthAscii(length, "GET ");
             length += writeBuffer.putStringWithoutLengthAscii(length, method);

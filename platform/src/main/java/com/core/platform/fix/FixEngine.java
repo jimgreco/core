@@ -1,6 +1,6 @@
 package com.core.platform.fix;
 
-import com.core.platform.io.SslProtocolClient;
+import com.core.platform.io.ProtocolClient;
 import org.agrona.DirectBuffer;
 
 import java.util.function.Consumer;
@@ -9,23 +9,19 @@ import java.util.function.Consumer;
  * A FIX engine allows the user to connect to a single counterparty and exchange FIX messages.
  * The implementation class determines whether the FIX engine is a client or server.
  *
- * <p>For FIX clients, the {@link #startConnecting(String, String) startConnecting} method will initiate a connection
+ * <p>For FIX clients, the {@link #connect() connect} method will initiate a connection
  * attempt by the client.
  * The client will continue to attempt to reconnect, until a connection is successfully established.
- * If the server uses SSL, an SSL handshake is initiated by the client and negotiated.
- * If disconnected, the client will attempt to reconnect until {@link #stopConnecting()} is invoked.
+ * If disconnected, the client will attempt to reconnect until {@link #disableReconnect()} is invoked.
  *
- * <p>For FIX servers, the {@link #startConnecting(String, String) startConnecting} method will open the TCP port and
+ * <p>For FIX servers, the {@link #connect() connect} method will open the TCP port and
  * wait for connections from the client.
- * If SSL is used, then an SSL handshake is negotiated between the client and server.
- * If disconnected, the server will accept a new client connection until {@link #stopConnecting()} is invoked.
+ * If disconnected, the server will accept a new client connection until {@link #disableReconnect()} is invoked.
  *
  * <p>For both the client and server implementations, the listener specified with
- * {@link #setConnectedListener(Runnable) setConnectedListener} will be invoked after connecting and the SSL protocol
- * is negotiated.
- * The listener specified with {@link #setDisconnectedListener(Runnable) setDisconnectedListener} is invoked when the
- * client or server is disconnected.
- * Counterparties can be disconnected manually using {@link #disconnect()}.
+ * {@link #setConnectedListener(Runnable) setConnectedListener} will be invoked after connecting and the connection is
+ * established.
+ * Counterparties can be disconnected manually using {@link #close()}.
  *
  * <p>Inbound messages can be subscribed to using the
  * {@link #setMessageListener(DirectBuffer, Consumer) setMessageListener} method.
@@ -43,15 +39,15 @@ import java.util.function.Consumer;
  * @see FixMsg
  * @see FixMsgWriter
  */
-public interface FixEngine extends SslProtocolClient {
+public interface FixEngine extends ProtocolClient {
 
     /**
      * Starts the connection process with the FIX counterparty.
-     * If the engine is a client, the engine will begin initiating an SSL socket connection with the counterparty.
+     * If the engine is a client, the engine will begin initiating a socket connection with the counterparty.
      * If the engine is a server, the engine will bind and receive connections from the counterparty.
      *
-     * <p>Once the sockets are connected, the SSL handshake must be completed.
-     * Then, the listener specified in {@link #setConnectedListener(Runnable) setConnectedListener} will be invoked.
+     * <p>Once the sockets are connected, the listener specified in
+     * {@link #setConnectedListener(Runnable) setConnectedListener} will be invoked.
      * If {@link #enableReconnect()} has been invoked then the client will continue to attempt to connect
      * until {@link #disableReconnect()} is invoked.
      */

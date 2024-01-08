@@ -3,15 +3,14 @@ package com.core.platform.io;
 import com.core.infrastructure.io.IoListener;
 
 /**
- * A marker interface for higher-level protocols that use an SSL socket.
+ * A marker interface for higher-level protocols that use a socket that implements a higher-level protocol.
  */
-public interface SslProtocolClient {
+public interface ProtocolClient {
 
     /**
      * Returns true if the protocol is connected.
      *
-     * <p>Typically, this means the socket is connected, the SSL handshake is complete, and any higher-level protocol
-     * initialization is complete.
+     * <p>Typically, this means the socket is connected and any higher-level protocol initialization is complete.
      *
      * @return true if the protocol is connected
      */
@@ -55,8 +54,7 @@ public interface SslProtocolClient {
     /**
      * Sets a listener to be invoked when the protocol is connected and ready for application use.
      *
-     * <p>Typically, this means the socket is connected, the SSL handshake is complete, and any higher-level protocol
-     * initialization is complete.
+     * <p>Typically, this means the socket is connected and any higher-level protocol initialization is complete.
      *
      * @param listener the listener
      */

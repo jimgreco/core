@@ -7,7 +7,7 @@ import com.core.infrastructure.encoding.EncoderUtils;
 import com.core.infrastructure.encoding.MutableObjectEncoder;
 import com.core.infrastructure.encoding.ObjectEncoder;
 import com.core.infrastructure.io.Selector;
-import com.core.infrastructure.io.SslSocketChannel;
+import com.core.infrastructure.io.SocketChannel;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 
@@ -23,10 +23,9 @@ public class JsonRestClient implements Encodable {
     private static final DirectBuffer CONTENT_LENGTH = BufferUtils.fromAsciiString("Content-Length");
 
     private final Selector selector;
-    private final Runnable cachedHandshakeComplete;
-    private final Runnable cachedConnectionFailed;
     private final Runnable cachedRead;
     private final Runnable cachedWrite;
+    private final Runnable cachedOnConnect;
 
     private final MutableDirectBuffer readBuffer;
     private final MutableDirectBuffer chunkedReadBuffer;
@@ -42,7 +41,7 @@ public class JsonRestClient implements Encodable {
     private Runnable connectionFailedListener;
     private Consumer<Json.Value> readListener;
 
-    private SslSocketChannel channel;
+    private SocketChannel channel;
     private String host;
 
     private HttpVerb verb;
@@ -53,16 +52,15 @@ public class JsonRestClient implements Encodable {
     private String connectionFailedReason;
 
     /**
-     * Creates a {@code JsonRestClient} with the specified {@code selector} used to create an SSL socket.
+     * Creates a {@code JsonRestClient} with the specified {@code selector} used to create a socket.
      *
      * @param selector the selector
      */
     public JsonRestClient(Selector selector) {
         this.selector = selector;
-        cachedHandshakeComplete = this::onHandshakeComplete;
-        cachedConnectionFailed = this::onConnectionFailed;
         cachedRead = this::onRead;
         cachedWrite = this::onWrite;
+        cachedOnConnect = this::onConnect;
 
         readBuffer = BufferUtils.allocateDirect(4096);
         chunkedReadBuffer = BufferUtils.allocateDirect(readBuffer.capacity());
@@ -76,17 +74,15 @@ public class JsonRestClient implements Encodable {
     }
 
     public boolean isConnected() {
-        return channel != null && channel.isHandshakeComplete();
+        return channel != null && channel.isConnected();
     }
 
     public Exception getConnectionFailedException() {
-        return channel == null || channel.getConnectionFailedException() == null
-                ? connectionFailedException : channel.getConnectionFailedException();
+        return connectionFailedException;
     }
 
     public String getConnectionFailedReason() {
-        return channel == null || channel.getConnectionFailedReason() == null
-                ? connectionFailedReason : channel.getConnectionFailedReason();
+        return connectionFailedReason;
     }
 
     public void setConnectedListener(Runnable listener) {
@@ -106,12 +102,11 @@ public class JsonRestClient implements Encodable {
             if (channel == null) {
                 host = address;
 
-                channel = selector.createSslSocketChannel();
+                channel = selector.createSocketChannel();
                 channel.configureBlocking(false);
                 channel.setReadListener(cachedRead);
                 channel.setWriteListener(cachedWrite);
-                channel.setHandshakeCompleteListener(cachedHandshakeComplete);
-                channel.setConnectionFailedListener(cachedConnectionFailed);
+                channel.setConnectListener(cachedOnConnect);
                 channel.connect(address);
             }
 
@@ -314,7 +309,7 @@ public class JsonRestClient implements Encodable {
 
     private void writeToSocket() {
         try {
-            if (channel != null && channel.isHandshakeComplete()) {
+            if (isConnected()) {
                 channel.write(writeBuffer, 0, writeBufferLength);
             }
         } catch (IOException e) {
@@ -324,7 +319,7 @@ public class JsonRestClient implements Encodable {
         }
     }
 
-    private void onHandshakeComplete() {
+    private void onConnect() {
         writeToSocket();
 
         if (connectListener != null) {

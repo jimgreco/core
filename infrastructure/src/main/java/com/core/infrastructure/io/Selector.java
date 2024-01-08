@@ -1,10 +1,7 @@
 package com.core.infrastructure.io;
 
-import javax.net.ssl.SSLContext;
 import java.io.Closeable;
 import java.io.IOException;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
 
 /**
  * A multiplexor of selectable objects.
@@ -37,25 +34,6 @@ public interface Selector extends Closeable {
      * @throws IOException if an I/O error occurs
      */
     SocketChannel createSocketChannel() throws IOException;
-
-    /**
-     * Creates and opens an SSL socket channel.
-     *
-     * @return a new socket channel
-     * @throws IOException if an I/O error occurs
-     * @throws NoSuchAlgorithmException if the default SSL algorithm does not exist
-     * @throws KeyManagementException if there is an error with the SSL key manager
-     */
-    SslSocketChannel createSslSocketChannel() throws IOException, NoSuchAlgorithmException, KeyManagementException;
-
-    /**
-     * Creates and opens an SSL socket channel with the specified SSL context.
-     *
-     * @param sslContext the SSL context
-     * @return a new socket channel
-     * @throws IOException if an I/O error occurs
-     */
-    SslSocketChannel createSslSocketChannel(SSLContext sslContext) throws IOException;
 
     /**
      * Creates and opens a server-socket channel.

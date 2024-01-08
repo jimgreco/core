@@ -9,7 +9,7 @@ import com.core.infrastructure.encoding.EncoderUtils;
 import com.core.infrastructure.encoding.ObjectEncoder;
 import com.core.infrastructure.io.IoListener;
 import com.core.infrastructure.io.Selector;
-import com.core.infrastructure.io.SslSocketChannel;
+import com.core.infrastructure.io.SocketChannel;
 import com.core.infrastructure.log.LogFactory;
 import com.core.infrastructure.metrics.MetricFactory;
 import com.core.infrastructure.time.Scheduler;
@@ -22,21 +22,7 @@ import com.core.platform.fix.schema.MsgType;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.security.KeyManagementException;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -85,8 +71,6 @@ public class StatelessFixClient implements FixEngine, Encodable {
     private final Runnable cachedSendHeartbeat;
     private final Runnable cachedConnect;
     private final Runnable cachedReconnect;
-    private final Runnable cachedHandshakeComplete;
-    private final Runnable cachedConnectionFailed;
     private final Runnable cachedConnectTimeout;
 
     private MutableDirectBuffer readBuffer;
@@ -107,7 +91,7 @@ public class StatelessFixClient implements FixEngine, Encodable {
     private Consumer<FixMsg> logoutListener;
     private Consumer<FixMsg> logonListener;
 
-    private SslSocketChannel channel;
+    private SocketChannel channel;
 
     private boolean reconnect;
     private long reconnectTimeout;
@@ -122,7 +106,6 @@ public class StatelessFixClient implements FixEngine, Encodable {
 
     private Exception connectionFailedException;
     private String connectionFailedReason;
-    private SSLContext sslContext;
     @Property(write = true)
     private boolean sendTestRequests;
 
@@ -150,8 +133,6 @@ public class StatelessFixClient implements FixEngine, Encodable {
 
         cachedRead = this::onRead;
         cachedConnect = this::onConnected;
-        cachedHandshakeComplete = this::onHandshakeComplete;
-        cachedConnectionFailed = this::onConnectionFailed;
         cachedReconnect = this::connect;
         cachedSendHeartbeat = this::sendHeartbeat;
         cachedConnectTimeout = this::onConnectTimeout;
@@ -183,19 +164,17 @@ public class StatelessFixClient implements FixEngine, Encodable {
 
     @Override
     public boolean isConnected() {
-        return channel != null && channel.isHandshakeComplete();
+        return channel != null && channel.isConnected();
     }
 
     @Override
     public Exception getConnectionFailedException() {
-        return channel.getConnectionFailedException() == null
-                ? connectionFailedException : channel.getConnectionFailedException();
+        return connectionFailedException;
     }
 
     @Override
     public String getConnectionFailedReason() {
-        return channel.getConnectionFailedReason() == null
-                ? connectionFailedReason : channel.getConnectionFailedReason();
+        return connectionFailedReason;
     }
 
     @Override
@@ -260,12 +239,10 @@ public class StatelessFixClient implements FixEngine, Encodable {
                     ioListener.onConnectionEvent(buf, 0, length);
                 }
 
-                channel = selector.createSslSocketChannel(sslContext);
+                channel = selector.createSocketChannel();
                 channel.configureBlocking(false);
                 channel.setReadListener(cachedRead);
                 channel.setConnectListener(cachedConnect);
-                channel.setHandshakeCompleteListener(cachedHandshakeComplete);
-                channel.setConnectionFailedListener(cachedConnectionFailed);
                 channel.connect(address);
             }
         } catch (Exception e) {
@@ -279,79 +256,6 @@ public class StatelessFixClient implements FixEngine, Encodable {
         connectTimeout = 0;
         connectionFailedReason = "connection never completed";
         onConnectionFailed();
-    }
-
-    /**
-     * Loads a password protected SSL trust store at the given path.
-     *
-     * @param keystorePath the path the key/trust store file
-     * @param password the password protecting the trust store file
-     * @throws KeyStoreException if an error occurs creating the key manager factory
-     * @throws IOException if an I/O error occurs
-     * @throws CertificateException if certificate can't be loaded
-     * @throws NoSuchAlgorithmException if the JVM is very badly configured
-     * @throws UnrecoverableKeyException if the password is wrong
-     * @throws KeyManagementException if the key manager cannot be loaded
-     */
-    @Command
-    public void loadSslTrustStore(String keystorePath, String password) throws KeyStoreException, IOException,
-            CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException, KeyManagementException {
-        var keystore = KeyStore.getInstance(KeyStore.getDefaultType());
-        try (var in = new FileInputStream(keystorePath)) {
-            keystore.load(in, password.toCharArray());
-        }
-        var keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        keyManagerFactory.init(keystore, password.toCharArray());
-
-        var trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-        trustManagerFactory.init(keystore);
-
-        sslContext = SSLContext.getInstance(SslSocketChannel.TlsV12);
-        sslContext.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), new SecureRandom());
-    }
-
-    /**
-     * Loads a password protected SSL key store at the given path.
-     *
-     * @param keystorePath the path the key/trust store file
-     * @param password the password protecting the trust store file
-     * @throws KeyStoreException if an error occurs creating the key manager factory
-     * @throws IOException if an I/O error occurs
-     * @throws CertificateException if certificate can't be loaded
-     * @throws NoSuchAlgorithmException if the JVM is very badly configured
-     * @throws UnrecoverableKeyException if the password is wrong
-     * @throws KeyManagementException if the key manager cannot be loaded
-     */
-    @Command
-    public void loadSslKeyStore(String keystorePath, String password) throws KeyStoreException, IOException,
-            CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException, KeyManagementException {
-        var keystore = KeyStore.getInstance(KeyStore.getDefaultType());
-        try (var in = new FileInputStream(keystorePath)) {
-            keystore.load(in, password.toCharArray());
-        }
-        var keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        keyManagerFactory.init(keystore, password.toCharArray());
-
-        // This mess is to accommodate Reactive, who (strangely) insist on a client cert, but do not provide a
-        // server cert that can be validated against their server name
-        var trustManager = new TrustManager[] {
-                new X509TrustManager() {
-                    @Override
-                    public void checkClientTrusted(X509Certificate[] chain, String authType) {
-                    }
-
-                    @Override
-                    public void checkServerTrusted(X509Certificate[] chain, String authType) {
-                    }
-
-                    @Override
-                    public X509Certificate[] getAcceptedIssuers() {
-                        return new X509Certificate[0];
-                    }
-                }
-        };
-        sslContext = SSLContext.getInstance(SslSocketChannel.TlsV12);
-        sslContext.init(keyManagerFactory.getKeyManagers(), trustManager, new SecureRandom());
     }
 
     @Command
@@ -418,6 +322,20 @@ public class StatelessFixClient implements FixEngine, Encodable {
     private void onConnected() {
         if (ioListener != null) {
             ioListener.onConnectionEvent("FIX socket connected");
+        }
+
+        if (resetSeqNum) {
+            outboundMsgSeqNum = 1;
+        }
+        dispatcher.logoff(resetSeqNum);
+
+        if (connectListener == null) {
+            createMessage(MsgType.LOGON)
+                    .putInteger(Fix42.HEART_BT_INT, sessionConfiguration.getHeartbeatInterval())
+                    .putEnum(Fix42.ENCRYPT_METHOD, EncryptMethod.NONE)
+                    .send();
+        } else {
+            connectListener.run();
         }
     }
 
@@ -519,26 +437,6 @@ public class StatelessFixClient implements FixEngine, Encodable {
             onConnectionFailed();
         } else if (dispatcher.getInboundMsgTime() + heartbeatIntervalNanos > time && sendTestRequests) {
             createMessage(MsgType.TEST_REQUEST).putInteger(Fix42.TEST_REQ_ID, time).send();
-        }
-    }
-
-    private void onHandshakeComplete() {
-        if (ioListener != null) {
-            ioListener.onConnectionEvent("FIX socket SSL handshake complete");
-        }
-
-        if (resetSeqNum) {
-            outboundMsgSeqNum = 1;
-        }
-        dispatcher.logoff(resetSeqNum);
-
-        if (connectListener == null) {
-            createMessage(MsgType.LOGON)
-                    .putInteger(Fix42.HEART_BT_INT, sessionConfiguration.getHeartbeatInterval())
-                    .putEnum(Fix42.ENCRYPT_METHOD, EncryptMethod.NONE)
-                    .send();
-        } else {
-            connectListener.run();
         }
     }
 

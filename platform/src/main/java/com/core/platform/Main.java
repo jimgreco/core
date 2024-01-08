@@ -141,7 +141,6 @@ public class Main {
     protected Main(Time time, LogFactory logFactory) throws IOException, CommandException {
         var scheduler = new Scheduler(time);
         var selector = new NioSelector();
-        selector.setScheduler(scheduler);
         eventLoop = new EventLoop(time, scheduler, selector);
 
         var metricFactory = new MetricFactory(logFactory);
