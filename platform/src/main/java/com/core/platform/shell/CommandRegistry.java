@@ -6,7 +6,6 @@ import com.core.infrastructure.collections.CoreMap;
 import com.core.infrastructure.command.Command;
 import com.core.infrastructure.command.Directory;
 import com.core.infrastructure.command.Property;
-import com.core.infrastructure.encoding.MutableObjectEncoder;
 import com.core.infrastructure.encoding.ObjectEncoder;
 import com.core.infrastructure.log.Log;
 import com.core.infrastructure.log.LogFactory;
@@ -68,7 +67,7 @@ class CommandRegistry {
         try {
             var commandDescriptor = resolve(from, to, true);
             if (!commandDescriptor.isEmpty()) {
-                throw new CommandException("cannot create command at location: " + commandDescriptor);
+                throw new CommandException("cannot create object at path: " + commandDescriptor);
             }
             log.info().append("adding object: path=").append(commandDescriptor.getPath())
                     .append(", type=").append(object.getClass().getName())
@@ -94,7 +93,7 @@ class CommandRegistry {
             var desc = objectToDescriptor.get(object);
             if (desc != null) {
                 if (failOnRegistered) {
-                    throw new CommandException("object already registered at path: " + desc.getPath());
+                    throw new CommandException("object already registered at path: " + desc);
                 }
                 return;
             }
@@ -155,7 +154,7 @@ class CommandRegistry {
                     length++;
                 }
                 if (length == 0) {
-                    throw new CommandException("cannot have empty path component: " + BufferUtils.toAsciiString(to));
+                    throw new CommandException("empty path component: " + BufferUtils.toAsciiString(to));
                 }
                 component.wrap(to, startSubcommandDescriptor, length);
                 currentDescriptor = currentDescriptor.child(component, create);
@@ -268,7 +267,7 @@ class CommandRegistry {
                         // same reference
                         continue;
                     } else {
-                        throw new CommandException("duplicate command at: " + childCommandDescriptor.toString());
+                        throw new CommandException("duplicate command at: " + childCommandDescriptor);
                     }
                 }
                 var methodHandle = MethodHandles.publicLookup().unreflect(method).bindTo(object);
@@ -494,7 +493,7 @@ class CommandRegistry {
                 children[children.length - 1] = child;
                 return child;
             } else {
-                throw new CommandException("unknown command: " + BufferUtils.toAsciiString(childName));
+                throw new CommandException("unknown path: " + BufferUtils.toAsciiString(childName));
             }
         }
 

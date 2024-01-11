@@ -457,7 +457,6 @@ public class Shell {
             }
 
             if (terminated) {
-                close();
                 return -1;
             } else if (outputObject != null) {
                 encoder.start(shell.tempBuffer, 0);
@@ -549,7 +548,6 @@ public class Shell {
             } catch (CommandException e) {
                 try {
                     shell.processingException = e;
-                    shell.log.warn().append(e).commit();
                     writeToOutput(e);
 
                     if (closeOnError) {
@@ -593,20 +591,34 @@ public class Shell {
 
         private void writeToOutput(Throwable e) throws IOException {
             if (output != null) {
-                writeToOutput(e.getClass().getName());
-                if (e.getMessage() != null) {
-                    writeToOutput(": ");
+                if (e instanceof CommandException) {
+                    shell.log.warn().append(e.getMessage()).commit();
+
                     writeToOutput(e.getMessage());
                     writeToOutput(NEW_LINE);
-                }
 
-                for (var stackTraceElement : e.getStackTrace()) {
-                    writeToOutput(stackTraceElement.toString());
-                    writeToOutput(NEW_LINE);
-                }
+                    if (e.getCause() != null) {
+                        shell.log.warn().append(e.getCause()).commit();
 
-                if (e.getCause() != null) {
-                    writeToOutput(e.getCause());
+                        writeToOutput(e.getCause());
+                        writeToOutput(NEW_LINE);
+                    }
+                } else {
+                    writeToOutput(e.getClass().getName());
+                    if (e.getMessage() != null) {
+                        writeToOutput(": ");
+                        writeToOutput(e.getMessage());
+                        writeToOutput(NEW_LINE);
+                    }
+
+                    for (var stackTraceElement : e.getStackTrace()) {
+                        writeToOutput(stackTraceElement.toString());
+                        writeToOutput(NEW_LINE);
+                    }
+
+                    if (e.getCause() != null) {
+                        writeToOutput(e.getCause());
+                    }
                 }
             }
         }

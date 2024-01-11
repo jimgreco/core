@@ -159,8 +159,8 @@ public class ShellTest {
                 var actual = run("create /foo/bar"
                         + " com.core.platform.shell.ShellTest\\$ClassWithOneArg");
 
-                then(actual).startsWith("com.core.platform.shell.CommandException: could not find constructor: "
-                        + "class=com.core.platform.shell.ShellTest$ClassWithOneArg, specifiedParams=0\n");
+                then(actual).startsWith("create: could not find constructor: "
+                        + "class=com.core.platform.shell.ShellTest$ClassWithOneArg, explicitArgs=0\n");
             }
 
             @Test
@@ -168,8 +168,8 @@ public class ShellTest {
                 var actual = run("create /foo/bar"
                         + " com.core.platform.shell.ShellTest\\$ClassWithOneArg -123 456");
 
-                then(actual).startsWith("com.core.platform.shell.CommandException: could not find constructor: "
-                        + "class=com.core.platform.shell.ShellTest$ClassWithOneArg, specifiedParams=2\n");
+                then(actual).startsWith("create: could not find constructor: "
+                        + "class=com.core.platform.shell.ShellTest$ClassWithOneArg, explicitArgs=2\n");
             }
         }
 
@@ -189,8 +189,8 @@ public class ShellTest {
                 var actual = run("create /foo/bar"
                         + " com.core.platform.shell.ShellTest\\$ClassWithTwoArg -123");
 
-                then(actual).startsWith("com.core.platform.shell.CommandException: could not find constructor: "
-                        + "class=com.core.platform.shell.ShellTest$ClassWithTwoArg, specifiedParams=1\n");
+                then(actual).startsWith("create: could not find constructor: "
+                        + "class=com.core.platform.shell.ShellTest$ClassWithTwoArg, explicitArgs=1\n");
             }
 
             @Test
@@ -198,8 +198,8 @@ public class ShellTest {
                 var actual = run("create /foo/bar"
                         + " com.core.platform.shell.ShellTest\\$ClassWithTwoArg -123 ABC DEF");
 
-                then(actual).startsWith("com.core.platform.shell.CommandException: could not find constructor: "
-                        + "class=com.core.platform.shell.ShellTest$ClassWithTwoArg, specifiedParams=3\n");
+                then(actual).startsWith("create: could not find constructor: "
+                        + "class=com.core.platform.shell.ShellTest$ClassWithTwoArg, explicitArgs=3\n");
             }
         }
 
