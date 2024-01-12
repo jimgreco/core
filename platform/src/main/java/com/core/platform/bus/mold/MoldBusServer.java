@@ -12,7 +12,6 @@ import com.core.infrastructure.messages.Schema;
 import com.core.infrastructure.metrics.MetricFactory;
 import com.core.infrastructure.time.Scheduler;
 import com.core.infrastructure.time.Time;
-import com.core.platform.activation.Activatable;
 import com.core.platform.activation.Activator;
 import com.core.platform.activation.ActivatorFactory;
 import com.core.platform.bus.AbstractBusServer;
@@ -35,7 +34,7 @@ import java.util.function.Consumer;
  */
 public class MoldBusServer<DispatcherT extends Dispatcher, ProviderT extends Provider>
         extends AbstractBusServer<DispatcherT, ProviderT>
-        implements Activatable, Encodable {
+        implements Encodable {
 
     @Directory
     private final MoldSession session;
@@ -283,16 +282,6 @@ public class MoldBusServer<DispatcherT extends Dispatcher, ProviderT extends Pro
     @Command
     public void createSession(DirectBuffer sessionSuffix) {
         session.create(sessionSuffix);
-    }
-
-    @Override
-    public void activate() {
-        activator.ready();
-    }
-
-    @Override
-    public void deactivate() {
-        activator.notReady("backup mode");
     }
 
     @Override
