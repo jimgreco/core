@@ -6,7 +6,6 @@ import com.core.infrastructure.command.Command;
 import com.core.infrastructure.encoding.Encodable;
 import com.core.infrastructure.encoding.ObjectEncoder;
 import com.core.infrastructure.time.Time;
-import com.core.platform.activation.Activatable;
 import com.core.platform.activation.Activator;
 import com.core.platform.activation.ActivatorFactory;
 import org.agrona.DirectBuffer;
@@ -28,7 +27,7 @@ import java.util.concurrent.TimeUnit;
  * Where {@code yyyyMMdd} is the date the session was created. and {@code XX} is the two-letter user-defined suffix for
  * the session.
  */
-class MoldSession implements Activatable, Encodable {
+class MoldSession implements Encodable {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
@@ -38,7 +37,6 @@ class MoldSession implements Activatable, Encodable {
     private DirectBuffer sessionName;
     private String sessionNameString;
     private long nextSessionSeqNum;
-    private DirectBuffer sessionSuffix;
 
     /**
      * Creates the {@code MoldSession} with the specified {@code time} object that is used to query the current date
@@ -53,17 +51,6 @@ class MoldSession implements Activatable, Encodable {
         nextSessionSeqNum = 1;
         activator = activatorFactory.createActivator(name, this);
         openSessionListeners = new CoreList<>();
-    }
-
-    /**
-     * Initializes the session suffix.
-     * The session will be created when the
-     *
-     * @param sessionSuffix the suffix of the session
-     */
-    @Command
-    public void setSessionSuffix(DirectBuffer sessionSuffix) {
-        this.sessionSuffix = BufferUtils.copy(sessionSuffix);
     }
 
     /**
@@ -156,22 +143,6 @@ class MoldSession implements Activatable, Encodable {
             throw new IllegalStateException(
                     "session is already defined: " + BufferUtils.toAsciiString(sessionName));
         }
-    }
-
-    @Override
-    public void activate() {
-        if (sessionSuffix == null) {
-            throw new IllegalStateException("sessionSuffix not set");
-        }
-        create(sessionSuffix);
-    }
-
-    DirectBuffer getSessionSuffix() {
-        return sessionSuffix;
-    }
-
-    @Override
-    public void deactivate() {
     }
 
     @Override

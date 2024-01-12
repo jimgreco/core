@@ -44,5 +44,5 @@ create inject01a com.core.clob.applications.utilities.ClobInjector @/bus INJ01
 inject01a/start
 #
 
-/busServer/setSessionSuffix AA
+/busServer/createSession AA
 seq01a/start
