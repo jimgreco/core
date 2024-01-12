@@ -338,6 +338,7 @@ public class FilePlayback<DispatcherT extends Dispatcher, ProviderT extends Prov
         public void addCloseSessionListener(Runnable listener) {
             closeListeners.add(listener);
         }
+
     }
 
     private class FileMessagePublisher implements MessagePublisher, Activatable {

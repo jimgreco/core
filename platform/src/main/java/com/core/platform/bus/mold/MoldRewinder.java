@@ -1,6 +1,8 @@
 package com.core.platform.bus.mold;
 
 import com.core.infrastructure.buffer.BufferUtils;
+import com.core.infrastructure.encoding.Encodable;
+import com.core.infrastructure.encoding.ObjectEncoder;
 import com.core.infrastructure.io.DatagramChannel;
 import com.core.infrastructure.io.Selector;
 import com.core.infrastructure.log.Log;
@@ -15,7 +17,7 @@ import java.io.IOException;
 import java.net.StandardSocketOptions;
 import java.util.Objects;
 
-class MoldRewinder implements Activatable {
+class MoldRewinder implements Encodable, Activatable {
 
     private final Selector selector;
     private final String discoveryChannelAddress;
@@ -172,5 +174,14 @@ class MoldRewinder implements Activatable {
             log.warn().append("error reading rewind socket, closing: ").append(e).commit();
             activator.stop();
         }
+    }
+
+    @Override
+    public void encode(ObjectEncoder encoder) {
+        encoder.openMap()
+                .string("discovery").object(discoveryChannelSocket)
+                .string("rewind").object(rewindSocket)
+                .string("store").object(messageStore)
+                .closeMap();
     }
 }

@@ -190,7 +190,6 @@ public class MoldBusClient<DispatcherT extends Dispatcher, ProviderT extends Pro
         encoder.openMap()
                 .string("eventReceiver").object(eventReceiver)
                 .string("commandProviders").number(nameToCommandProviders.size())
-                .string("activator").object(activator)
                 .closeMap();
     }
 

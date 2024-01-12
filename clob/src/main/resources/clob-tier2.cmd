@@ -1,23 +1,14 @@
 #
-# usage: clob.cmd
+# usage: clob-tier0.cmd
 # description: demonstration of a clob inside the sequencer
 #
 
 source network-local.cmd
 source -s sysout-log.cmd
-source -s telnet.cmd inet:0.0.0.0:7001
+source -s telnet.cmd inet:0.0.0.0:7003
 create /bus/schema com.core.clob.schema.ClobSchema
 create /bus com.core.platform.bus.mold.MoldBusClient \
-    client @/bus/schema $event_channel $command_channel $discovery_channel
-
-# Sequencer
-create /busServer/store com.core.platform.bus.mold.BufferChannelMessageStore
-create /busServer com.core.platform.bus.mold.MoldBusServer \
-    server @/bus/schema @/busServer/store $event_channel $command_channel $discovery_channel
-
-create seq01a com.core.platform.applications.sequencer.Sequencer @/busServer SEQ01
-create seq01a/handlers com.core.clob.applications.sequencer.ClobCommandHandlers @/busServer
-#
+    client @/bus/schema $event_channel $command_channel $discovery_channel_tier1
 
 # Reference Data Publisher
 create ref01a com.core.platform.applications.refdata.ReferenceDataPublisher @/bus REF01 equityDefinition
@@ -35,5 +26,4 @@ create inject01a com.core.clob.applications.utilities.ClobInjector @/bus INJ01
 inject01a/start
 #
 
-/busServer/createSession AA
-seq01a/start
+/bus/start

@@ -281,8 +281,8 @@ public class MoldBusServer<DispatcherT extends Dispatcher, ProviderT extends Pro
      * @throws IllegalArgumentException if {@code sessionSuffix} is not 2 bytes
      */
     @Command
-    public void setSessionSuffix(DirectBuffer sessionSuffix) {
-        session.setSessionSuffix(sessionSuffix);
+    public void createSession(DirectBuffer sessionSuffix) {
+        session.create(sessionSuffix);
     }
 
     @Override

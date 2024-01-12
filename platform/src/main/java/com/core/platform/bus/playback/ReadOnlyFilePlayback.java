@@ -269,5 +269,6 @@ public class ReadOnlyFilePlayback implements Consumer<String> {
         public void addCloseSessionListener(Runnable listener) {
             closeListeners.add(listener);
         }
+
     }
 }
