@@ -253,7 +253,7 @@ public class StatelessFixClient implements FixEngine, Encodable {
     }
 
     private void onConnectTimeout() {
-        connectTimeout = 0;
+        connectTaskId = 0;
         connectionFailedReason = "connection never completed";
         onConnectionFailed();
     }
@@ -435,7 +435,7 @@ public class StatelessFixClient implements FixEngine, Encodable {
         if (time > dispatcher.getInboundMsgTime() + 2 * heartbeatIntervalNanos) {
             connectionFailedReason = "FIX no message received from server, disconnecting";
             onConnectionFailed();
-        } else if (dispatcher.getInboundMsgTime() + heartbeatIntervalNanos > time && sendTestRequests) {
+        } else if (dispatcher.getInboundMsgTime() + heartbeatIntervalNanos < time && sendTestRequests) {
             createMessage(MsgType.TEST_REQUEST).putInteger(Fix42.TEST_REQ_ID, time).send();
         }
     }
@@ -473,7 +473,7 @@ public class StatelessFixClient implements FixEngine, Encodable {
 
             if (isConnected()) {
                 var length = readBufferLength - offset;
-                BufferUtils.compact(readBuffer, readBufferLength, length);
+                BufferUtils.compact(readBuffer, offset, length);
                 readBufferLength = length;
             }
         } catch (IOException e) {

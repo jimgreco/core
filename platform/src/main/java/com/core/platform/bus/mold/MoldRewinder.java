@@ -138,6 +138,7 @@ class MoldRewinder implements Encodable, Activatable {
                 log.warn().append("dropping rewind request with different session: received=").append(readBufferWrapper)
                         .append(", expected=").append(moldSession.getSessionName())
                         .commit();
+                return;
             }
 
             var msgSeqNum = readBuffer.getLong(MoldConstants.SEQ_NUM_OFFSET);
