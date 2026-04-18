@@ -275,7 +275,7 @@ public class BufferUtils {
      * @return the first start index of the character, or -1 if this does not occur
      */
     public static int indexOf(DirectBuffer buffer, int offset, int length, char character) {
-        for (var i = offset; i <= offset + length; i++) {
+        for (var i = offset; i < offset + length; i++) {
             var bufferByte = buffer.getByte(i);
             if (bufferByte == character) {
                 return i;

@@ -191,4 +191,22 @@ public class UUIDTest {
     void non_uuid_class_equals_is_false() {
         then(new UUID().equals(new Object())).isFalse();
     }
+
+    @Test
+    void isSet_with_only_mostSigBits_set_is_true() {
+        var uuid = new UUID();
+
+        uuid.setMostSignificantBits(1);
+
+        then(uuid.isSet()).isTrue();
+    }
+
+    @Test
+    void isSet_with_only_leastSigBits_set_is_true() {
+        var uuid = new UUID();
+
+        uuid.setLeastSignificantBits(1);
+
+        then(uuid.isSet()).isTrue();
+    }
 }

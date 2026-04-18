@@ -205,6 +205,16 @@ public class LinkedListTest {
         then(list.contains(item3)).isFalse();
     }
 
+    @Test
+    void contains_uses_equals_for_comparison() {
+        list.addLast(new Item(1));
+        list.addLast(new Item(2));
+        list.addLast(new Item(3));
+
+        then(list.contains(new Item(2))).isTrue();
+        then(list.contains(new Item(4))).isFalse();
+    }
+
     private static class Item implements Comparable<Item> {
 
         int value;

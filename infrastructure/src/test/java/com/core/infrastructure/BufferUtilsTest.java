@@ -164,6 +164,24 @@ public class BufferUtilsTest {
         then(actual).isEqualTo(-1);
     }
 
+    @Test
+    void index_of_character_does_not_search_past_length() {
+        var buffer = BufferUtils.fromAsciiString("foobar");
+
+        var actual = BufferUtils.indexOf(buffer, 0, 3, 'b');
+
+        then(actual).isEqualTo(-1);
+    }
+
+    @Test
+    void index_of_character_with_full_buffer_length_does_not_throw() {
+        var buffer = BufferUtils.fromAsciiString("foobar");
+
+        var actual = BufferUtils.indexOf(buffer, 0, buffer.capacity(), 'r');
+
+        then(actual).isEqualTo(5);
+    }
+
     @Nested
     class EqualsTests {
 

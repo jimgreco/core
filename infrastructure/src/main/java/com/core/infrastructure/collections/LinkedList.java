@@ -4,6 +4,7 @@ import com.core.infrastructure.encoding.Encodable;
 import com.core.infrastructure.encoding.ObjectEncoder;
 
 import java.util.Iterator;
+import java.util.Objects;
 
 /**
  * An ordered doubly linked list.
@@ -109,7 +110,7 @@ public class LinkedList<E> implements Iterable<E>, Deque<E>, Encodable {
     public boolean contains(E item) {
         var next = list.getFirst();
         while (next != null) {
-            if (next.item == item) {
+            if (Objects.equals(item, next.item)) {
                 return true;
             }
             next = next.getNext() == null ? null : next.getNext().getItem();

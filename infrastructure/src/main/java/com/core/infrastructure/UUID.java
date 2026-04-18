@@ -148,7 +148,7 @@ public class UUID {
      * @return true if the UUID is not 0
      */
     public boolean isSet() {
-        return leastSigBits != 0 && mostSigBits != 0;
+        return leastSigBits != 0 || mostSigBits != 0;
     }
 
     /**
