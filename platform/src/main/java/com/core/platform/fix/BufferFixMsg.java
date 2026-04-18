@@ -227,7 +227,7 @@ class BufferFixMsg implements FixMsg {
                 }
             }
 
-            wrapper.wrap(buffer, groupStartByte, groupEndByte);
+            wrapper.wrap(buffer, groupStartByte, groupEndByte - groupStartByte);
             return wrapper;
         }
 

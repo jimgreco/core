@@ -356,7 +356,7 @@ class MoldCommandPublisher implements Encodable, MessagePublisher, Activatable {
             outSeqNum = inSeqNum;
             // reset all pending outbound packets
             for (var i = inPacketIndex; i < outPacketIndex; i++) {
-                packets[i].reset();
+                packets[i % packets.length].reset();
             }
             inPacketIndex = 0;
             outPacketIndex = 0;

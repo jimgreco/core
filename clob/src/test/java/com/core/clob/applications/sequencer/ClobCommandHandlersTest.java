@@ -598,6 +598,21 @@ public class ClobCommandHandlersTest {
     }
 
     @Nested
+    class OrderEncodeTests {
+
+        @Test
+        void encode_includes_price_and_qty_as_distinct_keys() {
+            sendOrder("LEHM01", BUY, 1000, "AAPL", 99);
+            var order = handler.getBids(BufferUtils.fromAsciiString("AAPL")).getFirst();
+
+            var encoded = order.toEncodedString();
+
+            then(encoded).contains("qty");
+            then(encoded).contains("price");
+        }
+    }
+
+    @Nested
     class MiscEventTests {
 
         @Test

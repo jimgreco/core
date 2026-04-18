@@ -417,7 +417,7 @@ public class ClobCommandHandlers implements Encodable {
                     .string("side").string(sell ? "sell" : "buy")
                     .string("qty").number(qty, ClobConstants.QTY_ENCODER)
                     .string("instrumentId").number(instrumentId)
-                    .string("qty").number(price, ClobConstants.PRICE_ENCODER)
+                    .string("price").number(price, ClobConstants.PRICE_ENCODER)
                     .closeMap();
         }
     }

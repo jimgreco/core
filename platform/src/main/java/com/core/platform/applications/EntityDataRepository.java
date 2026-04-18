@@ -196,7 +196,7 @@ public class EntityDataRepository {
                     if (foreignKeyValue == null) {
                         key.add("");
                     } else {
-                        key.add(String.join("\\|", foreignKeyValue));
+                        key.add(String.join("/", foreignKeyValue));
                     }
                 } else if (fieldType == DirectBuffer.class) {
                     key.add(BufferUtils.toAsciiString((DirectBuffer) fieldValue));
