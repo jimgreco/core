@@ -144,7 +144,7 @@ class CommandProcessor implements StatementParser.CommandParser {
     private void processDefault(Shell.ShellContextImpl context, DirectBuffer[] params, int index, int length)
             throws CommandException {
         if (length != 2) {
-            throw new CommandException("default: too few arguments: default <key> <value>" + length);
+            throw new CommandException("default: too few arguments: default <key> <value>");
         }
         context.getVariables().putIfAbsent(BufferUtils.copy(params[index]), BufferUtils.copy(params[index + 1]));
     }
@@ -171,7 +171,7 @@ class CommandProcessor implements StatementParser.CommandParser {
     private void processLs(Shell.ShellContextImpl context, DirectBuffer[] params, int index, int length)
             throws CommandException {
         if (length >= 2) {
-            throw new CommandException("cd: too many arguments: cd <path>");
+            throw new CommandException("ls: too many arguments: ls <path>");
         }
         if (length == 0) {
             var resolved = commandRegistry.resolve(context.getPath(), CURRENT_DIRECTORY);
