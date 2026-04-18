@@ -169,7 +169,7 @@ class StatementParser {
             }
         } else {
             if (numTokens == tokens.length) {
-                throw new CommandException("statement has a max of 100 words", position);
+                throw new CommandException("statement has a max of " + MAX_TOKENS + " words", position);
             }
             mutableTokens[numTokens].putByte(tokenPosition, (byte) theByte);
             tokenPosition++;
@@ -194,7 +194,7 @@ class StatementParser {
         }
 
         if (numTokens == tokens.length) {
-            throw new CommandException("statement has a max of 100 words", bufferPosition);
+            throw new CommandException("statement has a max of " + MAX_TOKENS + " words", bufferPosition);
         }
         mutableTokens[numTokens].putBytes(
                 tokenPosition, variableValue, 0, variableValue.capacity());
@@ -203,7 +203,7 @@ class StatementParser {
 
     private void endToken(ShellContext context, int bufferPosition) throws CommandException {
         if (numTokens == tokens.length) {
-            throw new CommandException("statement has a max of 25 words", bufferPosition);
+            throw new CommandException("statement has a max of " + MAX_TOKENS + " words", bufferPosition);
         }
         if (inVariable) {
             endVariable(context, bufferPosition);

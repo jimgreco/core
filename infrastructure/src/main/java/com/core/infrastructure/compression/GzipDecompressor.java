@@ -66,8 +66,8 @@ public class GzipDecompressor implements Decompressor {
         var offset = XLEN_OFFSET;
         var flg = compressed.getByte(FLG_OFFSET);
         if ((flg & FLG_FEXTRA) != 0) {
-            var xlen = compressed.getShort(XLEN_OFFSET, ByteOrder.LITTLE_ENDIAN);
-            offset += xlen;
+            var xlen = Short.toUnsignedInt(compressed.getShort(XLEN_OFFSET, ByteOrder.LITTLE_ENDIAN));
+            offset += 2 + xlen;
         }
         if ((flg & FLG_FNAME) != 0) {
             while (offset < compressed.capacity() && compressed.getByte(offset++) != 0) {
@@ -102,7 +102,7 @@ public class GzipDecompressor implements Decompressor {
 
         var isize = compressed.getInt(compressed.capacity() - 4, ByteOrder.LITTLE_ENDIAN);
         if (isize != decompressedLength) {
-            throw new ZipException("invalid ISIZE: expected=" + decompressed + ", received=" + isize);
+            throw new ZipException("invalid ISIZE: expected=" + isize + ", received=" + decompressedLength);
         }
 
         return decompressedLength;
